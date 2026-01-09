@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles below */
+.nav-link {
+  transition: background 0.2s, color 0.2s, border-radius 0.2s;
+  border-radius: 0.75rem; /* rounded-lg */
+}
+.nav-link.active,
+.nav-link:hover {
+  background-color: #C8AFF0;
+  color: #000;
+  border-radius: 0.75rem;
+}

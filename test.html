@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<body>
+  <canvas id="barChart" width="400" height="300"></canvas>
+  <script>
+    Chart.register(window.ChartDataLabels);
+    const ctx = document.getElementById('barChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Total Revenue', 'Total Cost'],
+        datasets: [{
+          data: [65000, 12000],
+          backgroundColor: ['#60a5fa', '#f87171']
+        }]
+      },
+      options: {
+        plugins: {
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            clip: false,
+            color: '#374151',
+            font: { weight: 'bold', size: 16 },
+            formatter: function(value) {
+              return '₹' + value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+          }
+        }
+      },
+      plugins: [window.ChartDataLabels]
+    });
+  </script>
+</body>
+</html>
