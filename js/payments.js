@@ -2,7 +2,7 @@
 /**
  * payments.js
  * Logic: Monthly Statement + Calibration + Smart Arrears Breakdown (FIFO)
- * Updated: FIFO Logic added to "Total Pending" column
+ * Updated: Fixed Inline Delete Popup Clipping on First Row
  */
 
 // Global state
@@ -20,6 +20,9 @@ let paymentsState = {
 // ==========================================
 
 window.renderPaymentsTable = async function() {
+  // 1. FORCE SCROLL TO TOP
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
   // Cleanup existing modals
   const existingModal = document.getElementById('paymentModal');
   if (existingModal) existingModal.remove();
@@ -45,6 +48,90 @@ window.renderPaymentsTable = async function() {
       input[type=number]::-webkit-outer-spin-button { 
         -webkit-appearance: none; 
         margin: 0; 
+      }
+
+      /* --- INLINE POPUP STYLES --- */
+      .delete-action-wrapper {
+          position: relative;
+          display: inline-block;
+          z-index: 10;
+      }
+      /* Ensure active popup stays on top of other rows */
+      .delete-action-wrapper.active {
+          z-index: 50;
+      }
+      
+      .inline-confirm-popup {
+          position: absolute;
+          bottom: 100%; /* Default: Above the button */
+          right: 0;
+          margin-bottom: 10px;
+          
+          width: 200px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+          border-radius: 8px;
+          padding: 12px;
+          text-align: center;
+          cursor: default;
+          
+          /* Animation State */
+          opacity: 0;
+          visibility: hidden;
+          transform: translateY(10px);
+          transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+      }
+
+      /* --- FIX: DOWNWARD VARIATION (For First Row) --- */
+      .inline-confirm-popup.popup-down {
+          bottom: auto;
+          top: 100%; /* Go below the button */
+          margin-bottom: 0;
+          margin-top: 10px;
+          transform: translateY(-10px); /* Start slightly higher */
+      }
+      
+      /* Active States */
+      .delete-action-wrapper.active .inline-confirm-popup {
+          opacity: 1;
+          visibility: visible;
+          transform: translateY(0);
+      }
+      .delete-action-wrapper.active .inline-confirm-popup.popup-down {
+          transform: translateY(0);
+      }
+
+      /* Dark mode support */
+      .dark .inline-confirm-popup {
+          background: #1e293b;
+          border-color: #334155;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      }
+
+      /* --- ARROWS --- */
+      /* Default Arrow (Points Down) */
+      .inline-confirm-popup::after {
+          content: "";
+          position: absolute;
+          bottom: -5px;
+          right: 12px;
+          width: 10px;
+          height: 10px;
+          background: inherit;
+          border-bottom: 1px solid inherit;
+          border-right: 1px solid inherit;
+          transform: rotate(45deg);
+      }
+
+      /* Downward Popup Arrow (Points Up) */
+      .inline-confirm-popup.popup-down::after {
+          bottom: auto;
+          top: -5px; /* Move to top */
+          border-bottom: 0;
+          border-right: 0;
+          border-top: 1px solid inherit;
+          border-left: 1px solid inherit;
       }
     </style>
 
@@ -152,7 +239,7 @@ window.renderPaymentsTable = async function() {
 };
 
 // ==========================================
-// 2. MODAL HTML (UX FIX: HIDDEN INPUTS)
+// 2. MODAL HTML
 // ==========================================
 
 function getModalsHTML() {
@@ -179,6 +266,7 @@ function getModalsHTML() {
         </div>
 
         <form id="paymentForm" onsubmit="handlePaymentSubmit(event)" class="p-6">
+          <input type="hidden" id="editPaymentId" value="">
           <input type="hidden" id="payClientIdLocked" value="">
           <input type="hidden" id="payClientNameLocked" value="">
 
@@ -219,7 +307,7 @@ function getModalsHTML() {
             <textarea id="payNotes" rows="2" class="w-full text-sm border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none text-slate-600 dark:text-white resize-none" placeholder="Reference ID, Remarks..."></textarea>
           </div>
 
-          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl text-base font-bold shadow-lg shadow-blue-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+          <button type="submit" id="btnSubmitPayment" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl text-base font-bold shadow-lg shadow-blue-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
             <span>Confirm Payment</span>
             <i data-feather="arrow-right" class="w-4 h-4"></i>
           </button>
@@ -587,8 +675,6 @@ function renderBalancesTable() {
       let pendingDisplay = `₹${pending}`;
       
       // --- SMART ARREARS LOGIC (FIFO) ---
-      // We calculate if this month's payments covered the old arrears.
-      // If remainingArrears <= 0, it means the old debt is cleared, so we don't show the tag.
       const remainingArrears = c.previousDue - c.monthPaid;
 
       if (c.previousDue > 0 && remainingArrears > 0 && c.totalPending > 0) {
@@ -658,6 +744,10 @@ function renderBalancesTable() {
   if(window.feather) feather.replace();
 }
 
+// ==========================================
+// 5. RENDER HISTORY (UPDATED WITH INLINE POPUP)
+// ==========================================
+
 function renderPaymentHistoryTable() {
   const content = document.getElementById('paymentTabContent');
   const monthInput = document.getElementById('ledgerMonthFilter').value;
@@ -665,8 +755,6 @@ function renderPaymentHistoryTable() {
   
   const [yr, mo] = monthInput.split('-');
   const startOfMonth = `${monthInput}-01`;
-  
-  // Calculate end of month correctly
   const endOfMonth = new Date(parseInt(yr), parseInt(mo), 0).toISOString().split('T')[0];
   
   const filteredPayments = paymentsState.payments.filter(pay => {
@@ -689,16 +777,17 @@ function renderPaymentHistoryTable() {
   if (filteredPayments.length === 0) {
     html += `<tr><td colspan="5" class="text-center py-10 text-slate-400">No payments recorded in ${monthLabel}.</td></tr>`;
   } else {
-    filteredPayments.forEach(pay => {
+    filteredPayments.forEach((pay, index) => {
       
-      // 1. DATE FORMATTING LOGIC (YYYY-MM-DD -> 6-Jan-2026)
       const [pYear, pMonth, pDay] = pay.date.split('-');
       const dateObj = new Date(pYear, pMonth - 1, pDay);
       const monthName = dateObj.toLocaleString('default', { month: 'short' });
       const displayDate = `${parseInt(pDay)}-${monthName}-${pYear}`;
 
-      // 2. NOTES LOGIC
-      // We check if notes exist and create a small info block below the name
+      // --- LOGIC: If it's the very first row, push popup DOWN ---
+      const isFirstRow = index === 0;
+      const popupClass = isFirstRow ? 'inline-confirm-popup popup-down' : 'inline-confirm-popup';
+
       const notesHtml = pay.notes 
         ? `<div class="text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-start gap-1 max-w-[250px] leading-tight">
              <i data-feather="message-square" class="w-3 h-3 mt-0.5 flex-shrink-0"></i> 
@@ -728,9 +817,29 @@ function renderPaymentHistoryTable() {
           </td>
 
           <td class="py-3 px-6 text-right align-top pt-3">
-             <button onclick="deletePayment('${pay.id}')" class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full" title="Delete Entry">
-               <i data-feather="trash-2" class="w-4 h-4"></i>
-             </button>
+             <div class="flex justify-end gap-2 items-start">
+                 <button onclick="openEditPayment('${pay.id}')" class="text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full" title="Edit Entry">
+                   <i data-feather="edit-2" class="w-4 h-4"></i>
+                 </button>
+
+                 <div class="delete-action-wrapper">
+                    <button type="button" onclick="toggleDeletePopup(this)" class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full" title="Delete Entry">
+                        <i data-feather="trash-2" class="w-4 h-4"></i>
+                    </button>
+
+                    <div class="${popupClass}">
+                        <p class="text-xs text-slate-600 dark:text-slate-300 font-bold mb-3">Delete this payment?</p>
+                        <div class="flex gap-2 justify-center">
+                            <button type="button" onclick="closeDeletePopup(this)" class="px-3 py-1 text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-600 transition">
+                                Cancel
+                            </button>
+                            <button type="button" onclick="confirmDeletePayment('${pay.id}', this)" class="px-3 py-1 text-xs font-semibold bg-rose-600 text-white rounded hover:bg-rose-700 shadow-sm transition">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                 </div>
+             </div>
           </td>
         </tr>
       `;
@@ -739,7 +848,6 @@ function renderPaymentHistoryTable() {
   html += `</tbody></table>`;
   content.innerHTML = html;
   
-  // Re-initialize icons for the new "message-square" icon in remarks
   if(window.feather) feather.replace();
 }
 
@@ -753,19 +861,58 @@ function updatePaymentModalDropdown() {
   select.innerHTML = html;
 }
 
-window.deletePayment = async function(paymentId) {
-  if (!confirm("Remove this payment entry? The client's balance will increase.")) return;
-  try {
-    showLoading(true);
-    await db.collection('payments').doc(paymentId).delete();
-    new Notyf().success("Entry deleted.");
-    refreshLedgerData();
-  } catch (error) {
-    console.error(error);
-    showLoading(false);
-    new Notyf().error("Delete failed.");
-  }
+// ==========================================
+// 6. NEW INLINE DELETE LOGIC
+// ==========================================
+
+window.toggleDeletePopup = function(btn) {
+    const wrapper = btn.closest('.delete-action-wrapper');
+    const isAlreadyActive = wrapper.classList.contains('active');
+
+    // Close any other open popups first
+    document.querySelectorAll('.delete-action-wrapper.active').forEach(el => el.classList.remove('active'));
+
+    if (!isAlreadyActive) {
+        wrapper.classList.add('active');
+    }
 };
+
+window.closeDeletePopup = function(btn) {
+    const wrapper = btn.closest('.delete-action-wrapper');
+    if (wrapper) wrapper.classList.remove('active');
+};
+
+window.confirmDeletePayment = async function(paymentId, btn) {
+    const wrapper = btn.closest('.delete-action-wrapper');
+    
+    // UI Feedback
+    const originalText = btn.innerText;
+    btn.innerText = "...";
+    btn.disabled = true;
+
+    try {
+        await db.collection('payments').doc(paymentId).delete();
+        
+        // Success feedback
+        if (wrapper) wrapper.classList.remove('active');
+        new Notyf().success("Entry deleted.");
+        
+        refreshLedgerData(); // Reload table
+    } catch (error) {
+        console.error(error);
+        new Notyf().error("Delete failed.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+// Close popup when clicking outside
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.delete-action-wrapper')) {
+        document.querySelectorAll('.delete-action-wrapper.active').forEach(el => el.classList.remove('active'));
+    }
+});
+
 
 window.openCalibrationModal = function(clientId, currentVal, pureHistory) {
   document.getElementById('editBilledClientId').value = clientId;
@@ -805,8 +952,50 @@ window.saveManualBilled = async function() {
 };
 
 // ==========================================
-// 5. MODAL LOGIC (FIXED)
+// 7. MODAL & EDIT LOGIC
 // ==========================================
+
+// NEW: Edit Function
+window.openEditPayment = function(paymentId) {
+  const pay = paymentsState.payments.find(p => p.id === paymentId);
+  if (!pay) return;
+
+  // 1. Open the modal (using existing logic logic)
+  const modal = document.getElementById('paymentModal');
+  const modalContent = document.getElementById('paymentModalContent');
+  if (modal.parentElement !== document.body) document.body.appendChild(modal);
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modalContent.classList.remove('scale-95', 'opacity-0');
+    modalContent.classList.add('scale-100', 'opacity-100');
+  }, 10);
+
+  // 2. Pre-fill Data
+  document.getElementById('editPaymentId').value = pay.id;
+  document.getElementById('payAmount').value = pay.amount;
+  document.getElementById('payDate').value = pay.date;
+  document.getElementById('payMethod').value = pay.method || 'Cash';
+  document.getElementById('payNotes').value = pay.notes || '';
+
+  // 3. Lock Client (Prevent changing client during edit)
+  document.getElementById('payClientIdLocked').value = pay.clientId;
+  document.getElementById('payClientNameLocked').value = pay.clientName;
+  
+  // UI: Show Name, Hide Dropdown
+  document.getElementById('modalClientNameDisplay').innerText = "Editing: " + pay.clientName;
+  document.getElementById('modalClientNameDisplay').classList.remove('hidden');
+  document.getElementById('modalClientSelectWrapper').classList.add('hidden');
+  document.getElementById('paymentSuggestions').innerHTML = ''; // Hide quick chips
+
+  // 4. Update Button Text
+  const btn = document.querySelector('#paymentForm button[type="submit"] span');
+  if(btn) btn.innerText = "Update Entry";
+  
+  if(window.feather) feather.replace();
+};
+
 
 window.openPaymentModal = function(preselectId = '', prevDue = 0, totalDue = 0, event = null) {
   const modal = document.getElementById('paymentModal');
@@ -820,11 +1009,16 @@ window.openPaymentModal = function(preselectId = '', prevDue = 0, totalDue = 0, 
   document.getElementById('payAmount').value = '';
   document.getElementById('payNotes').value = '';
   document.getElementById('payMethod').value = 'Cash';
-  document.getElementById('payClientSelect').value = ""; // Reset dropdown
+  document.getElementById('payClientSelect').value = ""; 
   
   // FIX: Clear Hidden Inputs
+  document.getElementById('editPaymentId').value = ""; // Ensure not in edit mode
   document.getElementById('payClientIdLocked').value = "";
   document.getElementById('payClientNameLocked').value = "";
+
+  // Reset Button Text
+  const btn = document.querySelector('#paymentForm button[type="submit"] span');
+  if(btn) btn.innerText = "Confirm Payment";
 
   updatePaymentModalDropdown(); 
   
@@ -833,15 +1027,12 @@ window.openPaymentModal = function(preselectId = '', prevDue = 0, totalDue = 0, 
 
   if (preselectId) {
     // === MODE A: SPECIFIC CLIENT (LOCKED) ===
-    // 1. Find Client Name safely
     const ledgerClient = paymentsState.ledger.find(c => c.id === preselectId);
     let clientName = ledgerClient ? ledgerClient.name : "Unknown Client";
 
-    // 2. Set HIDDEN ID (Bypass Dropdown)
     document.getElementById('payClientIdLocked').value = preselectId;
     document.getElementById('payClientNameLocked').value = clientName;
 
-    // 3. UI: Hide Dropdown, Show Name Header
     displayTitle.innerText = clientName;
     displayTitle.classList.remove('hidden');
     selectWrapper.classList.add('hidden');
@@ -894,13 +1085,27 @@ window.closePaymentModal = function() {
   setTimeout(() => {
     modal.classList.remove('flex');
     modal.classList.add('hidden');
+    
+    // RESET STATE ON CLOSE
+    document.getElementById('editPaymentId').value = "";
+    document.getElementById('payClientIdLocked').value = "";
+    document.getElementById('payClientNameLocked').value = "";
+    document.getElementById('modalClientNameDisplay').classList.add('hidden');
+    document.getElementById('modalClientSelectWrapper').classList.remove('hidden');
+    
+    const btn = document.querySelector('#paymentForm button[type="submit"] span');
+    if(btn) btn.innerText = "Confirm Payment";
+
   }, 200);
 };
 
+// UPDATED: Submit Handler to handle both Create and Update
 window.handlePaymentSubmit = async function(e) {
   e.preventDefault();
   
-  // FIX: Check Hidden Input FIRST (Locked Mode), then fallback to Dropdown (Generic Mode)
+  // Check if Editing
+  const editId = document.getElementById('editPaymentId').value;
+
   const lockedId = document.getElementById('payClientIdLocked').value;
   const lockedName = document.getElementById('payClientNameLocked').value;
   const select = document.getElementById('payClientSelect');
@@ -924,23 +1129,33 @@ window.handlePaymentSubmit = async function(e) {
 
   try {
     const btn = e.target.querySelector('button[type="submit"]');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = `<span class="animate-spin inline-block mr-2">⏳</span> Saving...`;
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `<span class="animate-spin inline-block mr-2">⏳</span> Processing...`;
     btn.disabled = true;
     
-    await db.collection('payments').add({
+    const payload = {
       clientId, clientName, amount,
       date: document.getElementById('payDate').value,
       method: document.getElementById('payMethod').value,
-      notes: document.getElementById('payNotes').value,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+      notes: document.getElementById('payNotes').value
+    };
 
-    new Notyf().success("Payment Recorded!");
+    if (editId) {
+       // === UPDATE EXISTING ===
+       await db.collection('payments').doc(editId).update(payload);
+       new Notyf().success("Payment Updated!");
+    } else {
+       // === CREATE NEW ===
+       payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+       await db.collection('payments').add(payload);
+       new Notyf().success("Payment Recorded!");
+    }
+
     closePaymentModal();
-    btn.innerHTML = originalText;
+    btn.innerHTML = originalContent; // Restore button
     btn.disabled = false;
     refreshLedgerData();
+
   } catch (err) {
     new Notyf().error("Error saving.");
     console.error(err);
