@@ -1,23 +1,56 @@
-# Lush Patisserie - Sales Insights App
+# Flowr — Lush Patisserie Production and Pastry Management
 
-This is a private, proprietary web app developed by Karthick Mallya to streamline daily sales logging, batch cost tracking, and financial analysis for Lush Patisserie.
+Flowr is the production command center for Lush Patisserie. It brings together daily logging, billing, pantry management, and operational analytics in one streamlined workspace.
 
-## 🚀 Features
+## Highlights
 
-- Batch cost calculator with profit margins
-- Daily log with revenue, cost, packaging, and notes
-- Gross profit and net profit visual summaries
-- Monthly dashboard with trend and breakdown charts
-- Clean, mobile-friendly UI with celebratory animations
+- Centralized daily log for batches, staff shifts, and kitchen output
+- Billing tools with invoice generation and recipe margin calculator
+- Analytics for trends and performance
+- Quick actions for common operational tasks
+- Pastry management with inventory, clients, fixed expenses, and export
+- Built-in dark mode
 
-## 📌 Tech Stack
+## Daily Operations
 
-- HTML, TailwindCSS, JavaScript
-- Firebase (Firestore) for database
-- Chart.js for data visualization
+- Daily Log: Track production batches, staff shifts, and total kitchen output with notes.
+- Dashboard: View date context (e.g., Saturday, Jan 17) and access key modules quickly.
+- Quick Actions: Add Ingredient, New Client, Record Payment, View Orders.
 
-## ⚠️ License
+## Billing and Costing
 
-This project is **not open source**.
+- Invoice: Generate client bills and manage records.
+- Recipe Calculator: Calculate ingredient quantities, costs, and profit margins.
 
-© 2025 Karthick Mallya. All rights reserved. Unauthorized use or reproduction is strictly prohibited.
+## Analytics
+
+- Performance and trend views for operational and financial insights.
+- Designed for fast visibility into day-to-day performance.
+
+## Pastry Management
+
+- Inventory: Track pantry items and sizes with supported units (g, kg, ml, L).
+- Clients: Maintain customer records for faster invoicing.
+- Fixed Expenses: Organize recurring costs for net margin clarity.
+- Export: Move data out for reports or backups.
+
+### Pantry — Add Ingredient
+
+- Fields: Ingredient Name, Size, Unit (g/kg/ml/L), Cost (₹).
+- Actions: Cancel, Confirm.
+- Optimized for quick, consistent data entry.
+
+## UI and Access
+
+- Clean, mobile-friendly interface focused on speed.
+- Dark Mode: Toggle in profile settings.
+- Profile and Sign Out for secure session management.
+
+## Version
+
+- Flowr v1.0.0 • Lush Patisserie
+
+## License
+
+This project is private and proprietary.  
+© 2026 Karthick Mallya. All rights reserved. Unauthorized use or reproduction is strictly prohibited.
