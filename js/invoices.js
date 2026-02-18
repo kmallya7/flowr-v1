@@ -133,17 +133,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i data-feather="list" class="w-5 h-5 text-rose-500"></i> Invoice History
             </h2>
             
-            <div id="invoiceControlsRow" class="flex flex-wrap gap-2 w-full md:w-auto">
-                <input type="month" id="filterMonthYear" class="p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" />
+            <div id="invoiceControlsRow" class="flex flex-wrap gap-2 w-full md:w-auto md:items-center">
+                <div class="relative flex items-center h-10 min-w-[280px] bg-slate-900 dark:bg-slate-950 border border-slate-700 rounded-xl text-slate-100 shadow-sm">
+                    <button id="prevMonthBtn" type="button" class="h-full px-4 flex items-center justify-center text-slate-300 hover:text-white transition focus:ring-2 focus:ring-rose-500 outline-none rounded-l-xl" aria-label="Previous month">
+                        <i data-feather="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <button id="monthPickerTrigger" type="button" class="flex-1 h-full flex items-center justify-center gap-2 px-2 text-xs sm:text-sm font-semibold tracking-[0.12em] uppercase text-slate-100 focus:ring-2 focus:ring-rose-500 outline-none" aria-label="Choose month">
+                        <span id="filterMonthLabel">---</span>
+                        <i data-feather="calendar" class="w-4 h-4 text-slate-300"></i>
+                    </button>
+                    <button id="nextMonthBtn" type="button" class="h-full px-4 flex items-center justify-center text-slate-300 hover:text-white transition focus:ring-2 focus:ring-rose-500 outline-none rounded-r-xl" aria-label="Next month">
+                        <i data-feather="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                    <input type="month" id="filterMonthYear" class="absolute opacity-0 pointer-events-none w-0 h-0" tabindex="-1" aria-hidden="true" />
+                </div>
                 
-                <input type="text" id="invoiceSearchBox" class="p-2 flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-rose-500 outline-none min-w-[150px]" placeholder="Search..." />
-                
-                <select id="sortInvoicesBy" class="p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-rose-500 outline-none">
-                    <option value="invoiceDate-desc">Newest First</option>
-                    <option value="invoiceDate-asc">Oldest First</option>
-                    <option value="total-desc">High Amount</option>
-                    <option value="client-asc">Client A-Z</option>
-                </select>
+                <input type="text" id="invoiceSearchBox" class="p-2 w-full md:w-56 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Search..." />
             </div>
         </div>
 
@@ -306,6 +311,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const loader = document.getElementById("invoice-loading");
     if (show) loader.classList.remove("hidden");
     else loader.classList.add("hidden");
+  }
+
+  function formatDisplayDate(dateStr) {
+    if (!dateStr || typeof dateStr !== "string") return "-";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts.map(Number);
+    if (!year || !month || !day) return dateStr;
+    const dt = new Date(year, month - 1, day);
+    if (Number.isNaN(dt.getTime())) return dateStr;
+    const dayStr = String(dt.getDate()).padStart(2, "0");
+    const monthStr = dt.toLocaleString("en-US", { month: "short" });
+    return `${dayStr}-${monthStr}-${dt.getFullYear()}`;
   }
 
   // --- HELPER: INCREMENT INVOICE NUMBER ---
@@ -599,10 +617,60 @@ document.addEventListener("DOMContentLoaded", () => {
   const invoicesPerPage = 10;
   let filteredInvoices = [];
   let allInvoicesDocs = [];
+  let invoicesLoadSeq = 0;
+  let activeSort = { key: "invoiceDate", dir: "desc" };
+
+  function defaultDirForSortKey(key) {
+    return key === "clientName" || key === "invoiceNumber" ? "asc" : "desc";
+  }
+
+  function toggleInvoiceSort(key) {
+    if (activeSort.key === key) {
+      activeSort.dir = activeSort.dir === "asc" ? "desc" : "asc";
+    } else {
+      activeSort = { key, dir: defaultDirForSortKey(key) };
+    }
+    currentPage = 1;
+    sortAndRenderInvoices();
+  }
+
+  function setInvoicesListLoadingState(loading) {
+    const invoicesList = document.getElementById("invoicesList");
+    if (!invoicesList) return;
+    if (!invoicesList.dataset.animReady) {
+      invoicesList.style.transition = "opacity 220ms ease, transform 220ms ease";
+      invoicesList.dataset.animReady = "1";
+    }
+    if (loading) {
+      invoicesList.dataset.loading = "1";
+      invoicesList.style.opacity = "0.45";
+      invoicesList.style.transform = "translateY(4px)";
+      invoicesList.style.pointerEvents = "none";
+    } else {
+      invoicesList.dataset.loading = "0";
+      invoicesList.style.opacity = "1";
+      invoicesList.style.transform = "translateY(0)";
+      invoicesList.style.pointerEvents = "auto";
+    }
+  }
 
   function renderInvoicesTable(docs) {
     const invoicesList = document.getElementById("invoicesList");
     if (!invoicesList) return;
+
+    const sortHeader = (label, key, align = "left") => {
+      const isActive = activeSort.key === key;
+      const iconName = isActive ? (activeSort.dir === "asc" ? "chevron-up" : "chevron-down") : "chevron-down";
+      const justifyClass = align === "right" ? "justify-end w-full" : "justify-start";
+      return `
+        <th class="p-3 ${align === "right" ? "text-right" : ""}">
+          <button type="button" class="sortHeaderBtn inline-flex items-center ${justifyClass} gap-1.5 uppercase tracking-wide text-[11px] font-semibold hover:text-slate-700 dark:hover:text-slate-200 transition" data-sort-key="${key}">
+            <span>${label}</span>
+            <i data-feather="${iconName}" class="w-3.5 h-3.5 ${isActive ? "text-rose-500" : "text-slate-400 opacity-60"}"></i>
+          </button>
+        </th>
+      `;
+    };
 
     // Filter
     const searchVal = document.getElementById("invoiceSearchBox")?.value?.toLowerCase() || "";
@@ -622,10 +690,10 @@ document.addEventListener("DOMContentLoaded", () => {
       <table class="w-full text-sm text-left border-collapse">
         <thead class="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
           <tr>
-            <th class="p-3">Invoice #</th>
-            <th class="p-3">Date</th>
-            <th class="p-3">Client</th>
-            <th class="p-3 text-right">Total</th>
+            ${sortHeader("Invoice #", "invoiceNumber")}
+            ${sortHeader("Date", "invoiceDate")}
+            ${sortHeader("Client", "clientName")}
+            ${sortHeader("Total", "total", "right")}
             <th class="p-3 text-center">Actions</th>
           </tr>
         </thead>
@@ -648,7 +716,7 @@ document.addEventListener("DOMContentLoaded", () => {
         html += `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <td class="p-3 font-medium text-slate-700 dark:text-slate-300">${d.invoiceNumber || "-"}</td>
-            <td class="p-3 text-slate-500 dark:text-slate-400">${d.invoiceDate || "-"}</td>
+            <td class="p-3 text-slate-500 dark:text-slate-400">${formatDisplayDate(d.invoiceDate)}</td>
             <td class="p-3 text-slate-600 dark:text-slate-300">${d.client?.name || "-"}</td>
             <td class="p-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">${d.total || "₹0.00"}</td>
             <td class="p-3 text-center flex justify-center gap-2">
@@ -674,6 +742,12 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
     }
 
+    const shouldAnimateIn = invoicesList.dataset.loading === "1";
+    if (shouldAnimateIn) {
+      invoicesList.style.opacity = "0";
+      invoicesList.style.transform = "translateY(8px)";
+    }
+
     invoicesList.innerHTML = html;
     if (window.feather) feather.replace();
 
@@ -694,20 +768,35 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".deleteInvoiceBtn").forEach(btn => btn.addEventListener("click", async () => {
         if(confirm("Delete this invoice?")) deleteInvoice(btn.dataset.id);
     }));
+    document.querySelectorAll(".sortHeaderBtn").forEach(btn => btn.addEventListener("click", () => {
+      toggleInvoiceSort(btn.dataset.sortKey);
+    }));
 
-    // Sorting
-    document.getElementById("sortInvoicesBy")?.addEventListener("change", sortAndRenderInvoices);
+    if (shouldAnimateIn) {
+      requestAnimationFrame(() => setInvoicesListLoadingState(false));
+    }
   }
 
   function sortAndRenderInvoices() {
     let docs = [...allInvoicesDocs];
-    const sortVal = document.getElementById("sortInvoicesBy")?.value || "invoiceDate-desc";
+    const sortKey = activeSort.key;
+    const sortDir = activeSort.dir === "asc" ? 1 : -1;
 
     docs.sort((a, b) => {
-        if (sortVal === "invoiceDate-desc") return (b.invoiceDate || "").localeCompare(a.invoiceDate || "");
-        if (sortVal === "invoiceDate-asc") return (a.invoiceDate || "").localeCompare(b.invoiceDate || "");
-        if (sortVal === "total-desc") return parseFloat((b.total||"0").replace(/[^\d.]/g,"")) - parseFloat((a.total||"0").replace(/[^\d.]/g,""));
-        if (sortVal === "client-asc") return (a.client?.name||"").localeCompare(b.client?.name||"");
+        if (sortKey === "invoiceDate") {
+          return ((a.invoiceDate || "").localeCompare(b.invoiceDate || "")) * sortDir;
+        }
+        if (sortKey === "total") {
+          const aTotal = parseFloat((a.total || "0").replace(/[^\d.]/g, ""));
+          const bTotal = parseFloat((b.total || "0").replace(/[^\d.]/g, ""));
+          return (aTotal - bTotal) * sortDir;
+        }
+        if (sortKey === "clientName") {
+          return ((a.client?.name || "").localeCompare(b.client?.name || "")) * sortDir;
+        }
+        if (sortKey === "invoiceNumber") {
+          return ((a.invoiceNumber || "").localeCompare(b.invoiceNumber || "", undefined, { numeric: true, sensitivity: "base" })) * sortDir;
+        }
         return 0;
     });
     renderInvoicesTable(docs);
@@ -725,8 +814,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadAllInvoices() {
     const list = document.getElementById("invoicesList");
     if(!list) return;
-    
-    showLoading(true);
+    const loadSeq = ++invoicesLoadSeq;
+    setInvoicesListLoadingState(true);
 
     let query = db.collection("invoices");
     
@@ -744,12 +833,15 @@ document.addEventListener("DOMContentLoaded", () => {
     query = query.where("invoiceDate", ">=", start).where("invoiceDate", "<=", end);
 
     query.get().then(snap => {
+        if (loadSeq !== invoicesLoadSeq) return;
         allInvoicesDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         sortAndRenderInvoices();
     }).catch(err => {
+        if (loadSeq !== invoicesLoadSeq) return;
         console.error(err);
     }).finally(() => {
-        showLoading(false);
+        if (loadSeq !== invoicesLoadSeq) return;
+        if (list.dataset.loading === "1") setInvoicesListLoadingState(false);
     });
   }
 
@@ -782,7 +874,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="flex items-center justify-between p-2 bg-white dark:bg-slate-800 rounded border border-orange-100 dark:border-slate-700 shadow-sm">
                     <div>
                         <div class="font-bold text-slate-700 dark:text-slate-200">${p.client}</div>
-                        <div class="text-xs text-slate-500">${p.date} • ₹${p.totalRevenue}</div>
+                        <div class="text-xs text-slate-500">${formatDisplayDate(p.date)} • ₹${p.totalRevenue}</div>
                     </div>
                     <button class="createFromPendingBtn px-2 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 transition" data-id="${p.id}">Create</button>
                 </div>
@@ -834,8 +926,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.addEventListener("change", (e) => {
     if(e.target.id === "filterMonthYear") {
+        updateMonthLabel(e.target.value);
         loadAllInvoices();
         loadPendingDailyLogsForMonth(e.target.value);
+    }
+  });
+
+  function updateMonthLabel(monthValue) {
+    const label = document.getElementById("filterMonthLabel");
+    if (!label) return;
+    if (!monthValue) {
+      label.textContent = "---";
+      return;
+    }
+    const [year, month] = monthValue.split("-").map(Number);
+    const dt = new Date(year, month - 1, 1);
+    const monthName = dt.toLocaleString("en-US", { month: "short" }).toUpperCase();
+    label.textContent = `${monthName}-${year}`;
+  }
+
+  function shiftFilterMonth(offset) {
+    const monthInput = document.getElementById("filterMonthYear");
+    if (!monthInput) return;
+    const currentValue = monthInput.value || new Date().toISOString().slice(0, 7);
+    const [year, month] = currentValue.split("-").map(Number);
+    const nextMonthDate = new Date(year, month - 1 + offset, 1);
+    monthInput.value = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, "0")}`;
+    monthInput.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  document.getElementById("prevMonthBtn")?.addEventListener("click", () => shiftFilterMonth(-1));
+  document.getElementById("nextMonthBtn")?.addEventListener("click", () => shiftFilterMonth(1));
+  document.getElementById("monthPickerTrigger")?.addEventListener("click", () => {
+    const monthInput = document.getElementById("filterMonthYear");
+    if (!monthInput) return;
+    if (typeof monthInput.showPicker === "function") {
+      monthInput.showPicker();
+    } else {
+      monthInput.focus();
+      monthInput.click();
     }
   });
 
@@ -885,6 +1014,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // ------------
   const initMonth = new Date().toISOString().slice(0, 7);
   if(document.getElementById("filterMonthYear")) document.getElementById("filterMonthYear").value = initMonth;
+  updateMonthLabel(initMonth);
   resetInvoiceForm(); // Sets dates
   loadAllInvoices();
   loadPendingDailyLogsForMonth(initMonth);

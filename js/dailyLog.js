@@ -206,20 +206,24 @@ document.addEventListener("DOMContentLoaded", () => {
                </div>
             </div>
 
-            <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row gap-4">
-              <button type="submit" id="btn-add-entry" data-action="add" class="flex-1 bg-slate-900 dark:bg-blue-600 text-white py-3.5 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:bg-slate-700 dark:hover:bg-blue-500 hover:text-white transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex justify-center items-center gap-2">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                Save Entry
-              </button>
-              
-              <button type="submit" id="btn-update-entry" data-action="update" class="flex-1 bg-emerald-600 text-white py-3.5 rounded-xl font-semibold shadow-lg hover:bg-emerald-700 hover:text-white hidden transition-all flex justify-center items-center gap-2">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
-                Update Entry
-              </button>
-              
-              <button type="button" id="btn-new-entry" class="px-6 py-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
-                Reset
-              </button>
+            <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                <span id="form-state-indicator" class="h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                <span id="form-state-text">Ready to save</span>
+              </div>
+              <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-3 sm:ml-auto w-full sm:w-auto">
+                <button type="button" id="btn-new-entry" class="h-11 px-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors w-full sm:w-auto">
+                  Reset
+                </button>
+                <button type="submit" id="btn-add-entry" data-action="add" class="h-11 min-w-[190px] px-6 bg-slate-900 dark:bg-blue-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl hover:bg-slate-700 dark:hover:bg-blue-500 hover:text-white transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex justify-center items-center gap-2 w-full sm:w-auto">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Save Entry
+                </button>
+                <button type="submit" id="btn-update-entry" data-action="update" class="h-11 min-w-[190px] px-6 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg hover:bg-emerald-700 hover:text-white hidden transition-all flex justify-center items-center gap-2 w-full sm:w-auto">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
+                  Update Entry
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -301,6 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentViewDate = new Date(); // Keeps track of what we are looking at
 
   let activeDeletePopover = null;
+  let isFormDirty = false;
   const db = firebase.firestore();
 
   // --- 3. Helpers ---
@@ -321,6 +326,33 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.classList.remove("opacity-80", "cursor-not-allowed");
       btn.innerHTML = btn.dataset.originalContent || "Save Entry";
     }
+  }
+
+  function updateFormStatus() {
+    const textEl = document.getElementById("form-state-text");
+    const dotEl = document.getElementById("form-state-indicator");
+    if (!textEl || !dotEl) return;
+
+    if (isFormDirty) {
+      textEl.textContent = editingId ? "Unsaved edit changes" : "Unsaved changes";
+      dotEl.className = "h-2 w-2 rounded-full bg-amber-500 animate-pulse";
+      return;
+    }
+
+    textEl.textContent = editingId ? "Editing entry" : "Ready to save";
+    dotEl.className = "h-2 w-2 rounded-full bg-emerald-500";
+  }
+
+  function markFormDirty() {
+    if (!isFormDirty) {
+      isFormDirty = true;
+      updateFormStatus();
+    }
+  }
+
+  function markFormClean() {
+    isFormDirty = false;
+    updateFormStatus();
   }
 
   // Skeleton Loader for Table
@@ -395,20 +427,33 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tbody.children.length === 0) addItemRow();
   }
 
-  document.getElementById('add-item-row').addEventListener('click', () => addItemRow());
+  document.getElementById('add-item-row').addEventListener('click', () => {
+    addItemRow();
+    markFormDirty();
+  });
 
   document.getElementById('items-tbody').addEventListener('click', function(e) {
     if (e.target.closest('.remove-item')) {
       e.target.closest('tr').remove();
       ensureAtLeastOneItemRow();
       updateProfit();
+      markFormDirty();
     }
   });
 
   document.getElementById('items-tbody').addEventListener('input', function(e) {
     if (e.target.matches('.item-name, .item-qty, .item-revenue, .item-ingredients, .item-packaging')) {
       updateProfit();
+      markFormDirty();
     }
+  });
+
+  const dailyLogFormEl = document.getElementById("daily-log-form");
+  dailyLogFormEl.addEventListener("input", (e) => {
+    if (e.target.id !== "calculatedProfit") markFormDirty();
+  });
+  dailyLogFormEl.addEventListener("change", (e) => {
+    if (e.target.id !== "calculatedProfit") markFormDirty();
   });
 
   function updateProfit() {
@@ -774,6 +819,7 @@ async function renderEntriesTable(entries, emptyMsg) {
 
         // Background Refresh: Load the date we just saved to
         loadDailySummary(date);
+        markFormClean();
 
     } catch (err) {
         console.error("Save failed", err);
@@ -788,6 +834,7 @@ async function renderEntriesTable(entries, emptyMsg) {
     document.getElementById("btn-add-entry")?.classList.add("hidden");
     document.getElementById("btn-update-entry")?.classList.remove("hidden");
     document.getElementById("btn-new-entry").innerText = "Cancel Edit";
+    updateFormStatus();
   }
 
   function setAddMode() {
@@ -795,6 +842,7 @@ async function renderEntriesTable(entries, emptyMsg) {
     document.getElementById("btn-update-entry")?.classList.add("hidden");
     document.getElementById("btn-add-entry")?.classList.remove("hidden");
     document.getElementById("btn-new-entry").innerText = "Reset";
+    updateFormStatus();
   }
 
   // --- 7. Init (Start with TODAY) ---
@@ -802,6 +850,8 @@ async function renderEntriesTable(entries, emptyMsg) {
   document.getElementById("log-date").value = todayStr;
   
   addItemRow();
+  setAddMode();
+  markFormClean();
   
   // Initial Load: Show entries for TODAY
   loadDailySummary(todayStr, true);
@@ -824,6 +874,7 @@ async function renderEntriesTable(entries, emptyMsg) {
     ensureAtLeastOneItemRow();
     updateProfit();
     setUpdateMode();
+    markFormClean();
     document.getElementById("daily-log-form").scrollIntoView({ behavior: "smooth" });
   };
 
@@ -834,6 +885,7 @@ async function renderEntriesTable(entries, emptyMsg) {
     document.getElementById("calculatedProfit").value = "";
     addItemRow();
     document.getElementById("log-date").value = new Date().toISOString().split("T")[0];
+    markFormClean();
   });
 
   // Popover Logic for Delete

@@ -26,6 +26,395 @@ function hide(el) {
   if (el) el.classList.add("hidden");
 }
 
+const DASHBOARD_CARD_ORDER_KEY = "dashboardCardOrder";
+const DASHBOARD_CUSTOM_KPI_KEY = "dashboardCustomKpisV1";
+const DASHBOARD_CUSTOM_CHART_KEY = "dashboardCustomChartsV1";
+const DASHBOARD_CUSTOM_TABLE_KEY = "dashboardCustomTablesV1";
+let dashboardLatestMetrics = null;
+let dashboardLatestChartContext = null;
+const customChartInstances = {};
+let dashboardPendingDelete = null;
+
+const CUSTOM_KPI_METRICS = [
+  { key: "totalRevenue", label: "Total Revenue", defaultFormat: "currency", prevKey: "prevRevenue", trendGood: "up" },
+  { key: "totalCost", label: "Total Cost", defaultFormat: "currency", prevKey: "prevCost", trendGood: "down" },
+  { key: "grossProfit", label: "Gross Profit", defaultFormat: "currency", prevKey: "prevProfit", trendGood: "up" },
+  { key: "profitPercent", label: "Profit Margin", defaultFormat: "percent", prevKey: "prevProfitPercent", trendGood: "up" },
+  { key: "profitPerClient", label: "Profit per Client", defaultFormat: "currency", prevKey: "prevProfitPerClient", trendGood: "up" },
+  { key: "orderCount", label: "Total Orders", defaultFormat: "integer", trendGood: "up" },
+  { key: "avgOrderValue", label: "Average Order Value", defaultFormat: "currency", trendGood: "up" },
+  { key: "repeatCustomers", label: "Repeat Customers", defaultFormat: "integer", trendGood: "up" },
+  { key: "orderDays", label: "Order Days", defaultFormat: "integer", trendGood: "up" },
+  { key: "maxStreak", label: "Order Streak", defaultFormat: "integer", trendGood: "up" },
+  { key: "noOrderDays", label: "No Order Days", defaultFormat: "integer", trendGood: "down" }
+];
+
+const FORMULA_TOKENS = {
+  revenue: "Total Revenue",
+  cost: "Total Cost",
+  profit: "Gross Profit",
+  margin: "Profit Margin",
+  orders: "Total Orders",
+  aov: "Average Order Value",
+  clients: "Client Count",
+  ppc: "Profit per Client",
+  repeat: "Repeat Customers",
+  order_days: "Order Days",
+  streak: "Order Streak",
+  no_order_days: "No Order Days",
+  ingredients: "Ingredients Cost",
+  packaging: "Packaging Cost"
+};
+
+function getDashboardIconMap() {
+  return {
+    dollar: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
+    rupee: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="M11.5 21L6 13h6c2.8 0 5-2.2 5-5s-2.2-5-5-5H6"/></svg>`,
+    users: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+    bag: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`,
+    pie: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>`,
+    star: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`,
+    alert: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
+    zap: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`,
+    calendar: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
+    tag: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`,
+    trend: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`
+  };
+}
+
+function getCustomKpis() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DASHBOARD_CUSTOM_KPI_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomKpis(kpis) {
+  localStorage.setItem(DASHBOARD_CUSTOM_KPI_KEY, JSON.stringify(kpis));
+}
+
+function formatMetricValue(value, format) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "N/A";
+  if (format === "currency") return "₹" + num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  if (format === "percent") return num.toFixed(1) + "%";
+  if (format === "integer") return Math.round(num).toLocaleString("en-IN");
+  return num.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
+function getMetricMeta(metricKey) {
+  return CUSTOM_KPI_METRICS.find(m => m.key === metricKey) || null;
+}
+
+function renderCustomKpiList() {
+  const holder = $("custom-kpi-list");
+  if (!holder) return;
+  const kpis = getCustomKpis();
+  if (!kpis.length) {
+    holder.innerHTML = `<p class="text-xs text-slate-500 dark:text-slate-400">No custom KPIs yet.</p>`;
+    return;
+  }
+  holder.innerHTML = kpis.map(kpi => `
+    <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2">
+      <div>
+        <p class="text-xs font-semibold text-slate-700 dark:text-slate-200">${kpi.title}</p>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">${kpi.mode === "formula" ? `Formula: ${kpi.formula || "-"}` : (getMetricMeta(kpi.metricKey)?.label || kpi.metricKey)}</p>
+      </div>
+    </div>
+  `).join("");
+}
+
+function getCustomCharts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DASHBOARD_CUSTOM_CHART_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomCharts(charts) {
+  localStorage.setItem(DASHBOARD_CUSTOM_CHART_KEY, JSON.stringify(charts));
+}
+
+function getCustomTables() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DASHBOARD_CUSTOM_TABLE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomTables(tables) {
+  localStorage.setItem(DASHBOARD_CUSTOM_TABLE_KEY, JSON.stringify(tables));
+}
+
+function destroyCustomChartInstances() {
+  Object.values(customChartInstances).forEach(instance => {
+    if (instance && typeof instance.destroy === "function") instance.destroy();
+  });
+  Object.keys(customChartInstances).forEach(key => delete customChartInstances[key]);
+}
+
+function formatGroupLabel(groupBy, key) {
+  if (groupBy === "day") {
+    const d = new Date(key);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+  return key || "Unknown";
+}
+
+function formatMetricCell(metric, value) {
+  const num = Number(value || 0);
+  if (metric === "revenue" || metric === "profit") return "₹" + num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  return Math.round(num).toLocaleString("en-IN");
+}
+
+function aggregateMetricByGroup(ctxData, groupBy, metric) {
+  const result = {};
+  const logs = ctxData.logs || [];
+  const items = ctxData.allItems || [];
+
+  const add = (key, value) => {
+    if (!key) key = "Unknown";
+    if (!result[key]) result[key] = 0;
+    result[key] += value || 0;
+  };
+
+  if (metric === "orders") {
+    logs.forEach(log => {
+      const key = groupBy === "day" ? log.date : (groupBy === "client" ? (log.client || "Unknown") : null);
+      if (groupBy === "item") {
+        (log.items || []).forEach(item => add(item.name || "Unknown", 1));
+      } else {
+        add(key, 1);
+      }
+    });
+    return result;
+  }
+
+  items.forEach(item => {
+    const key = groupBy === "day" ? item.date : (groupBy === "client" ? (item.client || "Unknown") : (item.name || "Unknown"));
+    if (metric === "revenue") add(key, item.revenue || 0);
+    if (metric === "profit") add(key, (item.revenue || 0) - ((item.ingredients || 0) + (item.packaging || 0)));
+    if (metric === "qty") add(key, item.qty || 0);
+  });
+  return result;
+}
+
+function sortedEntriesForGroup(groupBy, metricMap, topN = 10) {
+  let entries = Object.entries(metricMap);
+  if (groupBy === "day") {
+    entries = entries.sort((a, b) => a[0].localeCompare(b[0]));
+  } else {
+    entries = entries.sort((a, b) => b[1] - a[1]).slice(0, topN);
+  }
+  return entries;
+}
+
+function renderCustomCharts() {
+  const grid = $("custom-charts-grid");
+  if (!grid) return;
+  destroyCustomChartInstances();
+
+  const charts = getCustomCharts();
+  if (!dashboardLatestChartContext || charts.length === 0) {
+    grid.innerHTML = "";
+    return;
+  }
+
+  grid.innerHTML = charts.map(chart => `
+    <div class="relative bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 group">
+      <button type="button" data-delete-custom-chart="${chart.id}" class="absolute top-2 right-2 h-6 w-6 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-800 text-xs font-bold transition opacity-0 group-hover:opacity-100">×</button>
+      <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">${chart.title}</h4>
+      <div class="h-72 w-full"><canvas id="custom-chart-${chart.id}"></canvas></div>
+    </div>
+  `).join("");
+
+  const palette = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6", "#ef4444", "#6366f1"];
+  charts.forEach(chart => {
+    const ctx = $(`custom-chart-${chart.id}`)?.getContext("2d");
+    if (!ctx) return;
+    const groupBy = chart.groupBy || "item";
+    const topN = Number(chart.topN || 10);
+    const entries = sortedEntriesForGroup(groupBy, aggregateMetricByGroup(dashboardLatestChartContext, groupBy, chart.metric || "revenue"), topN);
+    const labels = entries.map(([key]) => formatGroupLabel(groupBy, key));
+    const values = entries.map(([, value]) => value);
+
+    let config = null;
+    if (chart.type === "pie") {
+      config = {
+        type: "doughnut",
+        data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, datalabels: { display: false } } }
+      };
+    } else if (chart.type === "line") {
+      config = {
+        type: "line",
+        data: { labels, datasets: [{ label: chart.metric, data: values, borderColor: "#3b82f6", backgroundColor: "rgba(59,130,246,0.15)", fill: true, tension: 0.35 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } }
+      };
+    } else if (chart.type === "stackedBar") {
+      const revEntries = sortedEntriesForGroup(groupBy, aggregateMetricByGroup(dashboardLatestChartContext, groupBy, "revenue"), topN);
+      const revMap = Object.fromEntries(revEntries);
+      const profMap = aggregateMetricByGroup(dashboardLatestChartContext, groupBy, "profit");
+      const keys = revEntries.map(([k]) => k);
+      config = {
+        type: "bar",
+        data: {
+          labels: keys.map(k => formatGroupLabel(groupBy, k)),
+          datasets: [
+            { label: "Revenue", data: keys.map(k => revMap[k] || 0), backgroundColor: "#3b82f6" },
+            { label: "Profit", data: keys.map(k => profMap[k] || 0), backgroundColor: "#10b981" }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } }, plugins: { datalabels: { display: false } } }
+      };
+    } else if (chart.type === "butterfly") {
+      const revEntries = sortedEntriesForGroup(groupBy, aggregateMetricByGroup(dashboardLatestChartContext, groupBy, "revenue"), topN);
+      const revMap = Object.fromEntries(revEntries);
+      const profMap = aggregateMetricByGroup(dashboardLatestChartContext, groupBy, "profit");
+      const keys = revEntries.map(([k]) => k);
+      config = {
+        type: "bar",
+        data: {
+          labels: keys.map(k => formatGroupLabel(groupBy, k)),
+          datasets: [
+            { label: "Revenue", data: keys.map(k => revMap[k] || 0), backgroundColor: "#3b82f6" },
+            { label: "Profit", data: keys.map(k => -Math.abs(profMap[k] || 0)), backgroundColor: "#f59e0b" }
+          ]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { callback: v => Math.abs(v).toLocaleString("en-IN") } }
+          },
+          plugins: { datalabels: { display: false } }
+        }
+      };
+    } else {
+      config = {
+        type: "bar",
+        data: { labels, datasets: [{ label: chart.metric, data: values, backgroundColor: "#3b82f6", borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } }
+      };
+    }
+
+    customChartInstances[chart.id] = new Chart(ctx, config);
+  });
+}
+
+function renderCustomTables() {
+  const grid = $("custom-tables-grid");
+  if (!grid) return;
+
+  const tables = getCustomTables();
+  if (!dashboardLatestChartContext || tables.length === 0) {
+    grid.innerHTML = "";
+    return;
+  }
+
+  grid.innerHTML = tables.map(table => {
+    const groupBy = table.groupBy || "item";
+    const metric = table.metric || "revenue";
+    const topN = Number(table.topN || 10);
+    const entries = sortedEntriesForGroup(groupBy, aggregateMetricByGroup(dashboardLatestChartContext, groupBy, metric), topN);
+    const groupHeader = groupBy === "client" ? "Client" : (groupBy === "day" ? "Day" : "Item");
+    const valueHeader = metric === "revenue" ? "Revenue" : (metric === "profit" ? "Profit" : (metric === "orders" ? "Orders" : "Qty"));
+    const rows = entries.map(([key, value]) => `
+      <tr class="border-b border-slate-100 dark:border-slate-800">
+        <td class="px-3 py-2 text-slate-700 dark:text-slate-200">${formatGroupLabel(groupBy, key)}</td>
+        <td class="px-3 py-2 text-right font-semibold text-slate-700 dark:text-slate-200">${formatMetricCell(metric, value)}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <div class="relative bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 group">
+        <button type="button" data-delete-custom-table="${table.id}" class="absolute top-2 right-2 h-6 w-6 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-800 text-xs font-bold transition opacity-0 group-hover:opacity-100">×</button>
+        <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">${table.title}</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+              <tr>
+                <th class="px-3 py-2 text-left">${groupHeader}</th>
+                <th class="px-3 py-2 text-right">${valueHeader}</th>
+              </tr>
+            </thead>
+            <tbody>${rows || `<tr><td colspan="2" class="px-3 py-3 text-center text-slate-400">No data</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function buildFormulaContext(data) {
+  return {
+    revenue: Number(data.totalRevenue || 0),
+    cost: Number(data.totalCost || 0),
+    profit: Number(data.grossProfit || 0),
+    margin: Number(data.profitPercent || 0),
+    orders: Number(data.orderCount || 0),
+    aov: Number(data.avgOrderValue || 0),
+    clients: Number(data.clientCount || 0),
+    ppc: Number(data.profitPerClient || 0),
+    repeat: Number(data.repeatCustomers || 0),
+    order_days: Number(data.orderDays || 0),
+    streak: Number(data.maxStreak || 0),
+    no_order_days: Number(data.noOrderDays || 0),
+    ingredients: Number(data.totalIngredients || 0),
+    packaging: Number(data.totalPackaging || 0)
+  };
+}
+
+function evaluateFormulaExpression(formula, context) {
+  if (!formula || typeof formula !== "string") return null;
+  const trimmed = formula.trim();
+  if (!trimmed) return null;
+  if (!/^[\w\s+\-*/().]+$/.test(trimmed)) return null;
+
+  const replaced = trimmed.replace(/[a-zA-Z_][a-zA-Z0-9_]*/g, (token) => {
+    if (Object.prototype.hasOwnProperty.call(context, token)) return String(context[token]);
+    throw new Error("Unknown token");
+  });
+
+  try {
+    const val = Function(`"use strict"; return (${replaced});`)();
+    return Number.isFinite(val) ? val : null;
+  } catch {
+    return null;
+  }
+}
+
+function insertFormulaText(inputEl, text) {
+  if (!inputEl) return;
+  const start = typeof inputEl.selectionStart === "number" ? inputEl.selectionStart : inputEl.value.length;
+  const end = typeof inputEl.selectionEnd === "number" ? inputEl.selectionEnd : inputEl.value.length;
+  const before = inputEl.value.slice(0, start);
+  const after = inputEl.value.slice(end);
+  inputEl.value = before + text + after;
+  const nextPos = start + text.length;
+  inputEl.focus();
+  inputEl.setSelectionRange(nextPos, nextPos);
+}
+
+function openDashboardConfirm(message, onConfirm) {
+  dashboardPendingDelete = typeof onConfirm === "function" ? onConfirm : null;
+  const msg = $("dashboard-confirm-message");
+  if (msg) msg.textContent = message || "Are you sure?";
+  show($("dashboard-confirm-modal"));
+}
+
+function closeDashboardConfirm() {
+  dashboardPendingDelete = null;
+  hide($("dashboard-confirm-modal"));
+}
+
 // --- Loading & Error State ---
 
 function setLoading(isLoading) {
@@ -98,9 +487,20 @@ window.loadDashboard = async function () {
       </div>
       
       <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
-        <button id="toggle-edit-mode" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
-          <i data-feather="move" class="w-3 h-3"></i> <span>Customize Layout</span>
-        </button>
+        <div class="flex items-center gap-3">
+          <button id="toggle-edit-mode" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
+            <i data-feather="move" class="w-3 h-3"></i> <span>Customize Layout</span>
+          </button>
+          <button id="add-custom-kpi" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition">
+            <i data-feather="plus-circle" class="w-3 h-3"></i> <span>Add KPI</span>
+          </button>
+          <button id="add-custom-chart" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition">
+            <i data-feather="pie-chart" class="w-3 h-3"></i> <span>Add Chart</span>
+          </button>
+          <button id="add-custom-table" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 transition">
+            <i data-feather="grid" class="w-3 h-3"></i> <span>Add Table</span>
+          </button>
+        </div>
 
         <label class="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 cursor-pointer select-none">
           <input type="checkbox" id="partial-toggle" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
@@ -109,6 +509,208 @@ window.loadDashboard = async function () {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all" id="summary-cards"></div>
+      <div id="custom-charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+      <div id="custom-tables-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+      
+      <div id="custom-kpi-modal" class="hidden fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="max-w-lg mx-auto mt-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">Custom KPIs</h3>
+            <button id="close-custom-kpi-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+          </div>
+          <form id="custom-kpi-form" class="space-y-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Title</label>
+              <input id="custom-kpi-title" maxlength="30" required class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" placeholder="Example: Revenue / Order" />
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Calculation</label>
+              <select id="custom-kpi-mode" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                <option value="metric">Metric</option>
+                <option value="formula">Formula</option>
+              </select>
+            </div>
+            <div id="custom-kpi-metric-wrap">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Metric</label>
+              <select id="custom-kpi-metric" required class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"></select>
+            </div>
+            <div id="custom-kpi-formula-wrap" class="hidden">
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Formula</label>
+              <input id="custom-kpi-formula" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" placeholder="(revenue - cost) / orders" />
+              <div id="custom-kpi-formula-ops" class="mt-2 flex flex-wrap gap-1.5">
+                <button type="button" data-formula-insert=" + " class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">+</button>
+                <button type="button" data-formula-insert=" - " class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">-</button>
+                <button type="button" data-formula-insert=" * " class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">*</button>
+                <button type="button" data-formula-insert=" / " class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">/</button>
+                <button type="button" data-formula-insert="(" class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">(</button>
+                <button type="button" data-formula-insert=")" class="px-2 py-1 text-[11px] rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">)</button>
+              </div>
+              <div id="custom-kpi-formula-tokens" class="mt-2 flex flex-wrap gap-1.5">
+                ${Object.entries(FORMULA_TOKENS).map(([token, label]) =>
+                  `<button type="button" data-formula-insert="${token}" class="px-2 py-1 text-[11px] rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">${label}</button>`
+                ).join("")}
+              </div>
+              <p class="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Tokens: revenue, cost, profit, margin, orders, aov, clients, ppc, repeat, order_days, streak, no_order_days, ingredients, packaging</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Format</label>
+                <select id="custom-kpi-format" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="currency">Currency</option>
+                  <option value="number">Number</option>
+                  <option value="integer">Integer</option>
+                  <option value="percent">Percent</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Icon</label>
+                <select id="custom-kpi-icon" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="trend">Trend</option>
+                  <option value="rupee">Rupee</option>
+                  <option value="users">Users</option>
+                  <option value="bag">Bag</option>
+                  <option value="pie">Pie</option>
+                  <option value="star">Star</option>
+                  <option value="calendar">Calendar</option>
+                  <option value="tag">Tag</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Color</label>
+              <select id="custom-kpi-color" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                <option value="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">Blue</option>
+                <option value="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">Emerald</option>
+                <option value="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">Amber</option>
+                <option value="bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400">Pink</option>
+                <option value="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">Violet</option>
+                <option value="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400">Cyan</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Subtitle</label>
+              <input id="custom-kpi-subtitle" maxlength="50" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" placeholder="Optional helper text" />
+            </div>
+            <label class="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <input type="checkbox" id="custom-kpi-compare" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500" checked />
+              Show trend vs previous month (if available)
+            </label>
+            <div class="flex justify-end">
+              <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg">Add KPI</button>
+            </div>
+          </form>
+          <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Your Custom KPIs</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Tip: delete from KPI card hover x on dashboard.</p>
+            <div id="custom-kpi-list" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="custom-chart-modal" class="hidden fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="max-w-lg mx-auto mt-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">Custom Charts</h3>
+            <button id="close-custom-chart-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+          </div>
+          <form id="custom-chart-form" class="space-y-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Title</label>
+              <input id="custom-chart-title" maxlength="40" required class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" placeholder="Example: Revenue by Client" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Type</label>
+                <select id="custom-chart-type" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="bar">Bar</option>
+                  <option value="line">Line</option>
+                  <option value="pie">Pie</option>
+                  <option value="stackedBar">Stacked Bar</option>
+                  <option value="butterfly">Butterfly</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Group By</label>
+                <select id="custom-chart-group" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="item">Item</option>
+                  <option value="client">Client</option>
+                  <option value="day">Day</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Metric</label>
+                <select id="custom-chart-metric" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="revenue">Revenue</option>
+                  <option value="profit">Profit</option>
+                  <option value="qty">Quantity</option>
+                  <option value="orders">Orders</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Top N</label>
+                <input id="custom-chart-topn" type="number" min="3" max="25" value="10" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg">Add Chart</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="dashboard-confirm-modal" class="hidden fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="max-w-md mx-auto mt-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-2xl">
+          <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200 mb-2">Confirm Delete</h3>
+          <p id="dashboard-confirm-message" class="text-sm text-slate-600 dark:text-slate-300 mb-4"></p>
+          <div class="flex justify-end gap-2">
+            <button id="dashboard-confirm-cancel" type="button" class="px-3 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">Cancel</button>
+            <button id="dashboard-confirm-delete" type="button" class="px-3 py-2 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="custom-table-modal" class="hidden fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="max-w-lg mx-auto mt-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">Custom Tables</h3>
+            <button id="close-custom-table-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">✕</button>
+          </div>
+          <form id="custom-table-form" class="space-y-3">
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Title</label>
+              <input id="custom-table-title" maxlength="40" required class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" placeholder="Example: Revenue by Product" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Group By</label>
+                <select id="custom-table-group" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="item">Item</option>
+                  <option value="client">Client</option>
+                  <option value="day">Day</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Metric</label>
+                <select id="custom-table-metric" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option value="revenue">Revenue</option>
+                  <option value="profit">Profit</option>
+                  <option value="qty">Quantity</option>
+                  <option value="orders">Orders</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Top N</label>
+              <input id="custom-table-topn" type="number" min="3" max="50" value="10" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm" />
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg">Add Table</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
@@ -191,6 +793,205 @@ window.loadDashboard = async function () {
   $("partial-toggle").addEventListener("change", () => applyFilters());
   $("export-csv").addEventListener("click", () => exportDashboardCSV());
   
+  const customMetricSelect = $("custom-kpi-metric");
+  const customKpiMode = $("custom-kpi-mode");
+  const customKpiMetricWrap = $("custom-kpi-metric-wrap");
+  const customKpiFormulaWrap = $("custom-kpi-formula-wrap");
+  if (customMetricSelect) {
+    customMetricSelect.innerHTML = CUSTOM_KPI_METRICS.map(metric => `<option value="${metric.key}">${metric.label}</option>`).join("");
+    customMetricSelect.addEventListener("change", () => {
+      const selectedMeta = getMetricMeta(customMetricSelect.value);
+      const formatSelect = $("custom-kpi-format");
+      if (selectedMeta && formatSelect) formatSelect.value = selectedMeta.defaultFormat;
+    });
+    customMetricSelect.dispatchEvent(new Event("change"));
+  }
+  if (customKpiMode) {
+    customKpiMode.addEventListener("change", () => {
+      const formulaMode = customKpiMode.value === "formula";
+      if (customKpiMetricWrap) customKpiMetricWrap.classList.toggle("hidden", formulaMode);
+      if (customKpiFormulaWrap) customKpiFormulaWrap.classList.toggle("hidden", !formulaMode);
+      const compareToggle = $("custom-kpi-compare");
+      if (compareToggle) {
+        compareToggle.checked = formulaMode ? false : compareToggle.checked;
+        compareToggle.disabled = formulaMode;
+      }
+    });
+    customKpiMode.dispatchEvent(new Event("change"));
+  }
+  const formulaInput = $("custom-kpi-formula");
+  $("custom-kpi-formula-ops")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-formula-insert]");
+    if (!btn || !formulaInput) return;
+    e.preventDefault();
+    insertFormulaText(formulaInput, btn.getAttribute("data-formula-insert") || "");
+  });
+  $("custom-kpi-formula-tokens")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-formula-insert]");
+    if (!btn || !formulaInput) return;
+    e.preventDefault();
+    const token = btn.getAttribute("data-formula-insert") || "";
+    const withPadding = formulaInput.value && !formulaInput.value.endsWith(" ") ? ` ${token}` : token;
+    insertFormulaText(formulaInput, withPadding);
+  });
+  renderCustomKpiList();
+  renderCustomCharts();
+  renderCustomTables();
+
+  $("add-custom-kpi").addEventListener("click", () => {
+    show($("custom-kpi-modal"));
+  });
+  $("close-custom-kpi-modal").addEventListener("click", () => hide($("custom-kpi-modal")));
+  $("custom-kpi-modal").addEventListener("click", (e) => {
+    if (e.target.id === "custom-kpi-modal") hide($("custom-kpi-modal"));
+  });
+  $("summary-cards").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-custom-kpi]");
+    if (!deleteBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const id = deleteBtn.getAttribute("data-delete-custom-kpi");
+    const allCustom = getCustomKpis();
+    const target = allCustom.find(kpi => kpi.id === id);
+    if (!target) return;
+    openDashboardConfirm(`Delete custom KPI "${target.title}"?`, () => {
+      const nextCustom = allCustom.filter(kpi => kpi.id !== id);
+      saveCustomKpis(nextCustom);
+
+      const currentOrder = JSON.parse(localStorage.getItem(DASHBOARD_CARD_ORDER_KEY) || "[]");
+      if (Array.isArray(currentOrder)) {
+        const nextOrder = currentOrder.filter(cardId => cardId !== id);
+        localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(nextOrder));
+      }
+
+      renderCustomKpiList();
+      if (dashboardLatestMetrics) renderSummaryCards(dashboardLatestMetrics);
+    });
+  });
+
+  $("add-custom-chart").addEventListener("click", () => show($("custom-chart-modal")));
+  $("close-custom-chart-modal").addEventListener("click", () => hide($("custom-chart-modal")));
+  $("custom-chart-modal").addEventListener("click", (e) => {
+    if (e.target.id === "custom-chart-modal") hide($("custom-chart-modal"));
+  });
+  $("dashboard-confirm-cancel").addEventListener("click", () => closeDashboardConfirm());
+  $("dashboard-confirm-delete").addEventListener("click", () => {
+    if (dashboardPendingDelete) dashboardPendingDelete();
+    closeDashboardConfirm();
+  });
+  $("dashboard-confirm-modal").addEventListener("click", (e) => {
+    if (e.target.id === "dashboard-confirm-modal") closeDashboardConfirm();
+  });
+  $("custom-chart-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const chart = {
+      id: "custom-chart-" + Date.now(),
+      title: ($("custom-chart-title").value || "").trim(),
+      type: $("custom-chart-type").value || "bar",
+      groupBy: $("custom-chart-group").value || "item",
+      metric: $("custom-chart-metric").value || "revenue",
+      topN: Math.max(3, Math.min(25, Number($("custom-chart-topn").value || 10)))
+    };
+    if (!chart.title) return;
+    const allCharts = getCustomCharts();
+    allCharts.push(chart);
+    saveCustomCharts(allCharts);
+    $("custom-chart-form").reset();
+    $("custom-chart-topn").value = 10;
+    hide($("custom-chart-modal"));
+    renderCustomCharts();
+  });
+  $("custom-charts-grid").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-custom-chart]");
+    if (!deleteBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = deleteBtn.getAttribute("data-delete-custom-chart");
+    const all = getCustomCharts();
+    const chart = all.find(c => c.id === id);
+    if (!chart) return;
+    openDashboardConfirm(`Delete custom chart "${chart.title}"?`, () => {
+      saveCustomCharts(all.filter(c => c.id !== id));
+      renderCustomCharts();
+    });
+  });
+  $("add-custom-table").addEventListener("click", () => show($("custom-table-modal")));
+  $("close-custom-table-modal").addEventListener("click", () => hide($("custom-table-modal")));
+  $("custom-table-modal").addEventListener("click", (e) => {
+    if (e.target.id === "custom-table-modal") hide($("custom-table-modal"));
+  });
+  $("custom-table-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const table = {
+      id: "custom-table-" + Date.now(),
+      title: ($("custom-table-title").value || "").trim(),
+      groupBy: $("custom-table-group").value || "item",
+      metric: $("custom-table-metric").value || "revenue",
+      topN: Math.max(3, Math.min(50, Number($("custom-table-topn").value || 10)))
+    };
+    if (!table.title) return;
+    const allTables = getCustomTables();
+    allTables.push(table);
+    saveCustomTables(allTables);
+    $("custom-table-form").reset();
+    $("custom-table-topn").value = 10;
+    hide($("custom-table-modal"));
+    renderCustomTables();
+  });
+  $("custom-tables-grid").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-custom-table]");
+    if (!deleteBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = deleteBtn.getAttribute("data-delete-custom-table");
+    const all = getCustomTables();
+    const table = all.find(t => t.id === id);
+    if (!table) return;
+    openDashboardConfirm(`Delete custom table "${table.title}"?`, () => {
+      saveCustomTables(all.filter(t => t.id !== id));
+      renderCustomTables();
+    });
+  });
+
+  $("custom-kpi-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const mode = $("custom-kpi-mode").value || "metric";
+    const metricKey = $("custom-kpi-metric").value;
+    const metricMeta = getMetricMeta(metricKey);
+    const formula = ($("custom-kpi-formula").value || "").trim();
+    if (mode === "metric" && !metricMeta) return;
+    if (mode === "formula" && !formula) return;
+    const kpi = {
+      id: "custom-" + Date.now(),
+      title: ($("custom-kpi-title").value || "").trim(),
+      mode,
+      metricKey,
+      formula,
+      format: $("custom-kpi-format").value || (metricMeta ? metricMeta.defaultFormat : "number"),
+      iconKey: $("custom-kpi-icon").value || "trend",
+      colorClass: $("custom-kpi-color").value || "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+      subtitle: ($("custom-kpi-subtitle").value || "").trim(),
+      compareWithPrevious: mode === "metric" ? $("custom-kpi-compare").checked : false
+    };
+    if (!kpi.title) return;
+    const all = getCustomKpis();
+    all.push(kpi);
+    saveCustomKpis(all);
+    $("custom-kpi-form").reset();
+    $("custom-kpi-compare").checked = true;
+    if (customMetricSelect) {
+      customMetricSelect.selectedIndex = 0;
+      customMetricSelect.dispatchEvent(new Event("change"));
+    }
+    if (customKpiMode) {
+      customKpiMode.value = "metric";
+      customKpiMode.dispatchEvent(new Event("change"));
+    }
+    renderCustomKpiList();
+    if (dashboardLatestMetrics) renderSummaryCards(dashboardLatestMetrics);
+  });
+  
   // --- DRAG AND DROP TOGGLE LOGIC ---
   const toggleEditBtn = $("toggle-edit-mode");
   let isEditMode = false;
@@ -213,7 +1014,7 @@ window.loadDashboard = async function () {
           onEnd: function (evt) {
             // Save order to LocalStorage
             const order = sortableInstance.toArray();
-            localStorage.setItem('dashboardCardOrder', JSON.stringify(order));
+            localStorage.setItem(DASHBOARD_CARD_ORDER_KEY, JSON.stringify(order));
           }
         });
       } else {
@@ -324,9 +1125,11 @@ async function loadDashboardData(month, year, dayLimit = null) {
     let totalRevenue = 0, totalIngredients = 0, totalPackaging = 0;
     let allItems = [], clientMap = {};
     const uniqueDates = new Set();
+    const logsData = [];
     
     logsSnap.forEach(doc => {
       const d = doc.data();
+      logsData.push(d);
       if (d.date) uniqueDates.add(d.date);
       if (d.items && Array.isArray(d.items)) {
         d.items.forEach(item => {
@@ -421,13 +1224,18 @@ async function loadDashboardData(month, year, dayLimit = null) {
     const prevProfitPercent = prevRevenue ? (prevProfit / prevRevenue) * 100 : 0;
     
     // Render Everything
-    renderSummaryCards({
+    dashboardLatestMetrics = {
       totalRevenue, totalCost, grossProfit, profitPercent, profitPerClient,
       orderCount, avgOrderValue, repeatCustomers,
       bestSelling, worstSelling, mostProfitable,
       orderDays, maxStreak, noOrderDays,
+      clientCount, totalIngredients, totalPackaging,
       prevRevenue, prevCost, prevProfit, prevProfitPercent, prevProfitPerClient
-    });
+    };
+    dashboardLatestChartContext = { logs: logsData, allItems };
+    renderSummaryCards(dashboardLatestMetrics);
+    renderCustomCharts();
+    renderCustomTables();
 
     renderTopItems(itemsArr);
     renderTopClients(clientMap);
@@ -444,6 +1252,10 @@ async function loadDashboardData(month, year, dayLimit = null) {
 }
 
 function renderEmptyState() {
+  dashboardLatestMetrics = null;
+  dashboardLatestChartContext = null;
+  renderCustomCharts();
+  renderCustomTables();
   $("summary-cards").innerHTML = "";
   $("top-sellers-tbody").innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">No data found</td></tr>`;
   $("top-clients-tbody").innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">No data found</td></tr>`;
@@ -460,12 +1272,16 @@ function pctChange(c, p) {
   return (val >= 0 ? "+" : "") + val.toFixed(1) + "%";
 }
 
-function createCardHTML(id, title, value, subValue, trend, trendGood, iconSvg, colorClass) {
+function createCardHTML(id, title, value, subValue, trend, trendGood, iconSvg, colorClass, options = {}) {
   const trendColor = trendGood ? 'text-emerald-600' : 'text-red-500';
   const hasTrend = trend && trend !== "0%" && trend !== "";
+  const deleteBtn = options.allowDelete
+    ? `<button type="button" data-delete-custom-kpi="${id}" class="absolute top-2 right-2 h-6 w-6 rounded-full bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-800 text-xs font-bold transition opacity-0 group-hover:opacity-100">×</button>`
+    : "";
   
   return `
-    <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition hover:shadow-md flex flex-col justify-between h-full group" data-id="${id}">
+    <div class="relative bg-white dark:bg-slate-900 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition hover:shadow-md flex flex-col justify-between h-full group" data-id="${id}">
+      ${deleteBtn}
       <div class="flex justify-between items-start mb-2">
         <div>
           <p class="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">${title}</p>
@@ -494,17 +1310,17 @@ function renderSummaryCards(data) {
   const ppcChg = pctChange(data.profitPerClient, data.prevProfitPerClient);
 
   // SVG Icons
-  const iDollar = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`;
-  const iRupee = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="M11.5 21L6 13h6c2.8 0 5-2.2 5-5s-2.2-5-5-5H6"/></svg>`;
-  const iUsers = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`;
-  const iBag = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>`;
-  const iPie = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>`;
-  const iStar = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-  const iAlert = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
-  const iZap = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
-  const iCal = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
-  const iTag = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
-  const iTrend = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`;
+  const icons = getDashboardIconMap();
+  const iRupee = icons.rupee;
+  const iUsers = icons.users;
+  const iBag = icons.bag;
+  const iPie = icons.pie;
+  const iStar = icons.star;
+  const iAlert = icons.alert;
+  const iZap = icons.zap;
+  const iCal = icons.calendar;
+  const iTag = icons.tag;
+  const iTrend = icons.trend;
 
   // 1. Define All Possible Cards
   const cardDefinitions = [
@@ -570,19 +1386,61 @@ function renderSummaryCards(data) {
     }
   ];
 
+  const customDefinitions = getCustomKpis()
+    .map(kpi => {
+      let metricMeta = getMetricMeta(kpi.metricKey);
+      let value = null;
+      let trend = "";
+      let trendGood = true;
+      let subtitle = kpi.subtitle || "";
+      let format = kpi.format || "number";
+
+      if (kpi.mode === "formula") {
+        const formulaContext = buildFormulaContext(data);
+        value = evaluateFormulaExpression(kpi.formula, formulaContext);
+        subtitle = subtitle || "Custom formula";
+      } else {
+        if (!metricMeta) return null;
+        value = data[kpi.metricKey];
+        const prevValue = metricMeta.prevKey ? data[metricMeta.prevKey] : null;
+        trend = kpi.compareWithPrevious && metricMeta.prevKey ? pctChange(value, prevValue) : "";
+        trendGood = metricMeta.trendGood === "down" ? !trend.startsWith("+") : !trend.startsWith("-");
+        subtitle = subtitle || metricMeta.label;
+        format = kpi.format || metricMeta.defaultFormat;
+      }
+
+      return {
+        id: kpi.id,
+        html: createCardHTML(
+          kpi.id,
+          kpi.title,
+          formatMetricValue(value, format),
+          subtitle,
+          trend,
+          trendGood,
+          icons[kpi.iconKey] || icons.trend,
+          kpi.colorClass || "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+          { allowDelete: true }
+        )
+      };
+    })
+    .filter(Boolean);
+
+  const allCardDefinitions = [...cardDefinitions, ...customDefinitions];
+
   // 2. Load Saved Order from LocalStorage
-  const savedOrder = JSON.parse(localStorage.getItem('dashboardCardOrder'));
+  const savedOrder = JSON.parse(localStorage.getItem(DASHBOARD_CARD_ORDER_KEY) || "[]");
   
   // 3. Sort Definitions
   let sortedCards = [];
   if (savedOrder && savedOrder.length > 0) {
-    sortedCards = savedOrder.map(id => cardDefinitions.find(c => c.id === id)).filter(Boolean);
+    sortedCards = savedOrder.map(id => allCardDefinitions.find(c => c.id === id)).filter(Boolean);
     const savedIds = new Set(savedOrder);
-    const newCards = cardDefinitions.filter(c => !savedIds.has(c.id));
+    const newCards = allCardDefinitions.filter(c => !savedIds.has(c.id));
     sortedCards = [...sortedCards, ...newCards];
   } else {
     // Default Order
-    sortedCards = cardDefinitions;
+    sortedCards = allCardDefinitions;
   }
 
   // 4. Render

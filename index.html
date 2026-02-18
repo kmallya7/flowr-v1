@@ -1255,6 +1255,9 @@
     const navLinks = document.querySelectorAll('.nav-link');
 
     function showSection(id) {
+      // Reset scroll so each tab opens from the top instead of preserving the previous tab's scroll position.
+      window.scrollTo({ top: 0, behavior: 'auto' });
+
       sections.forEach(s => {
         const el = document.getElementById(s);
         if(el) {

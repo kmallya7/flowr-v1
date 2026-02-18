@@ -44,6 +44,20 @@ document.addEventListener('click', function(event) {
   if (event.target.id === 'edit-modal-backdrop') {
     window.closeEditModal();
   }
+  if (event.target.id === 'save-modal-backdrop') {
+    window.closeSaveModal();
+  }
+  if (event.target.id === 'delete-modal-backdrop') {
+    window.closeDeleteModal();
+  }
+});
+
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    if (typeof window.closeEditModal === "function") window.closeEditModal();
+    if (typeof window.closeSaveModal === "function") window.closeSaveModal();
+    if (typeof window.closeDeleteModal === "function") window.closeDeleteModal();
+  }
 });
 
 // --- Main UI logic ---
@@ -261,13 +275,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span>Save this Batch</span>
               </button>
                
-               <div id="save-loading" class="hidden mt-4 flex items-center justify-center gap-2">
-                 <div class="relative w-4 h-4">
-                   <div class="absolute inset-0 bg-blue-500 rounded-full blur-sm opacity-30 animate-pulse"></div>
-                   <img src="assets/Flowr Logo.png" class="relative w-full h-full rounded-full animate-breath">
-                 </div>
-                 <span class="text-xs text-blue-500 font-medium">Saving to library...</span>
-               </div>
+               <p class="mt-3 text-xs text-slate-400 dark:text-slate-500 text-center">
+                 Save to your library with a custom batch name.
+               </p>
 
             </div>
 
@@ -294,6 +304,27 @@ document.addEventListener("DOMContentLoaded", () => {
   
   const hideError = () => {
     document.getElementById("form-error").classList.add("hidden");
+  };
+
+  const escapeHtml = (value) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+  const showModalError = (id, msg) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove("hidden");
+  };
+
+  const hideModalError = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add("hidden");
+    el.textContent = "";
   };
 
   const setProfitTileColor = (profit) => {
@@ -417,7 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <button onclick='window.openEditModal("${safeId}")' class="flex w-full items-center px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-blue-600 dark:hover:text-blue-400">
                   Edit
                 </button>
-                <button onclick='deletePreset("${safeId}", "${d.name}")' class="flex w-full items-center px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                <button onclick='window.openDeleteModal("${safeId}", ${JSON.stringify(d.name || "this batch")})' class="flex w-full items-center px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                   Delete
                 </button>
               </div>
@@ -456,29 +487,13 @@ document.addEventListener("DOMContentLoaded", () => {
     renderPresetList(filtered);
   });
 
-  document.getElementById("save-preset-btn").addEventListener("click", async () => {
+  document.getElementById("save-preset-btn").addEventListener("click", () => {
     const res = calculateAndDisplay();
     if (!res) {
       showError("Fill in valid data first.");
       return;
     }
-    const name = prompt("Name this batch preset (e.g. 'Chocolate Croissant'):");
-    if (!name) return;
-
-    document.getElementById("save-loading").classList.remove("hidden");
-    await db.collection("batchPresets").add({ 
-      name, 
-      cost: res.cost, 
-      price: res.price, 
-      qty: res.qty, 
-      createdAt: new Date() 
-    });
-    document.getElementById("save-loading").classList.add("hidden");
-    
-    if (presetsVisible) loadPresets();
-    else {
-      document.getElementById("toggle-presets-btn").click();
-    }
+    window.openSaveModal(res);
   });
 
   window.applyPreset = (data) => {
@@ -504,14 +519,117 @@ document.addEventListener("DOMContentLoaded", () => {
     window.scrollTo({ top: document.getElementById("batchCalculator").offsetTop - 20, behavior: 'smooth' });
   };
 
-  window.deletePreset = async (id, name) => {
-    if(confirm(`Delete "${name}"?`)) {
-      await db.collection("batchPresets").doc(id).delete();
-      loadPresets();
-    }
+  // --- NEW GLOBAL MODAL LOGIC (Appended to Body) ---
+
+  window.openSaveModal = (data) => {
+    window.closeSaveModal();
+    window.closeEditModal();
+    window.closeDeleteModal();
+
+    const modal = document.createElement("div");
+    modal.id = "save-modal-wrapper";
+    modal.className = "relative z-[9999]";
+
+    modal.innerHTML = `
+      <div id="save-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+
+      <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+          <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md animate-modal-in">
+            <div class="px-6 pt-6 pb-2 flex justify-between items-start">
+              <div>
+                <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Save Batch</h3>
+                <p class="text-xl font-bold text-slate-900 dark:text-white">Add to your presets</p>
+              </div>
+              <button type="button" onclick="window.closeSaveModal()" class="rounded-full p-1 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="px-6 pb-4 space-y-4">
+              <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                <label class="block text-xs font-medium text-slate-500 mb-1">Preset Name</label>
+                <input type="text" id="save-modal-name" placeholder="Chocolate Croissant" class="w-full bg-transparent border-0 p-0 text-slate-900 dark:text-white font-semibold focus:ring-0 text-lg" />
+              </div>
+
+              <div class="grid grid-cols-3 gap-3 text-center">
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl py-2 border border-slate-100 dark:border-slate-700/50">
+                  <p class="text-[10px] uppercase text-slate-400">Cost</p>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">₹${data.cost.toFixed(2)}</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl py-2 border border-slate-100 dark:border-slate-700/50">
+                  <p class="text-[10px] uppercase text-slate-400">Price</p>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">₹${data.price.toFixed(2)}</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl py-2 border border-slate-100 dark:border-slate-700/50">
+                  <p class="text-[10px] uppercase text-slate-400">Qty</p>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">${data.qty}</p>
+                </div>
+              </div>
+
+              <div id="save-modal-error" class="hidden bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-xs"></div>
+            </div>
+
+            <div class="px-6 pb-6 pt-2">
+              <button id="save-modal-submit-btn" onclick='window.saveNewPreset(${JSON.stringify(data)})' class="w-full inline-flex justify-center items-center rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-all">
+                Save Preset
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    const nameInput = document.getElementById("save-modal-name");
+    if (nameInput) nameInput.focus();
   };
 
-  // --- NEW GLOBAL MODAL LOGIC (Appended to Body) ---
+  window.closeSaveModal = () => {
+    const el = document.getElementById("save-modal-wrapper");
+    if (el) el.remove();
+  };
+
+  window.saveNewPreset = async (data) => {
+    const nameInput = document.getElementById("save-modal-name");
+    const saveBtn = document.getElementById("save-modal-submit-btn");
+    const name = nameInput?.value.trim();
+
+    hideModalError("save-modal-error");
+
+    if (!name) {
+      showModalError("save-modal-error", "Please enter a preset name.");
+      return;
+    }
+
+    if (!saveBtn) return;
+    const originalLabel = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.classList.add("opacity-70", "cursor-not-allowed");
+    saveBtn.innerHTML = "Saving...";
+
+    try {
+      await db.collection("batchPresets").add({
+        name,
+        cost: data.cost,
+        price: data.price,
+        qty: data.qty,
+        createdAt: new Date()
+      });
+
+      window.closeSaveModal();
+      if (presetsVisible) loadPresets();
+      else document.getElementById("toggle-presets-btn").click();
+    } catch (e) {
+      console.error("Save preset failed", e);
+      showModalError("save-modal-error", "Could not save right now. Please try again.");
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      saveBtn.innerHTML = originalLabel;
+    }
+  };
   
   window.openEditModal = (id) => {
     // Find data
@@ -519,6 +637,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!item) return;
 
     // Remove any existing modal first
+    window.closeSaveModal();
+    window.closeDeleteModal();
     window.closeEditModal();
 
     const modal = document.createElement('div');
@@ -539,7 +659,7 @@ document.addEventListener("DOMContentLoaded", () => {
                   <h3 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Editing Batch Details</h3>
                   
                   <div class="relative mt-2">
-                     <input type="text" id="modal-name" value="${item.name}" 
+                     <input type="text" id="modal-name" value="${escapeHtml(item.name)}" 
                        class="block w-full border-0 p-0 text-slate-900 dark:text-white text-2xl font-bold placeholder:text-slate-400 focus:ring-0 bg-transparent" 
                        placeholder="Batch Name" />
                      <div class="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-600 rounded-full"></div>
@@ -571,10 +691,11 @@ document.addEventListener("DOMContentLoaded", () => {
                   <label class="block text-xs font-medium text-slate-500 mb-1">Batch Quantity</label>
                   <input type="number" id="modal-qty" value="${item.qty}" class="w-full bg-transparent border-0 p-0 text-slate-900 dark:text-white font-semibold focus:ring-0 text-lg" />
                </div>
+               <div id="modal-edit-error" class="hidden bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-xs"></div>
             </div>
 
             <div class="px-6 pb-6 pt-2">
-               <button onclick="window.saveEditModal('${id}')" class="w-full inline-flex justify-center items-center rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all">
+               <button id="modal-edit-save-btn" onclick="window.saveEditModal('${id}')" class="w-full inline-flex justify-center items-center rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all">
                   Save Changes
                   <svg class="ml-2 -mr-0.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
@@ -599,32 +720,123 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.saveEditModal = async (id) => {
-    const name = document.getElementById('modal-name').value;
+    const name = document.getElementById('modal-name').value.trim();
     const price = parseFloat(document.getElementById('modal-price').value);
     const cost = parseFloat(document.getElementById('modal-cost').value);
     const qty = parseFloat(document.getElementById('modal-qty').value);
+    const saveBtn = document.getElementById("modal-edit-save-btn");
+
+    hideModalError("modal-edit-error");
 
     if (!name || isNaN(price) || isNaN(cost) || isNaN(qty)) {
-      alert("Please check your inputs.");
+      showModalError("modal-edit-error", "Please check your inputs.");
       return;
     }
 
-    // Close Modal Immediately
-    window.closeEditModal();
-
-    // Optimistic Update
-    const index = cachedPresets.findIndex(p => p.__id === id);
-    if(index !== -1) {
-        cachedPresets[index] = { ...cachedPresets[index], name, price, cost, qty };
-        renderPresetList(cachedPresets);
+    if (price <= 0 || cost <= 0 || qty <= 0) {
+      showModalError("modal-edit-error", "Price, cost, and quantity must be greater than zero.");
+      return;
     }
 
+    if (!saveBtn) return;
+    const originalLabel = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.classList.add("opacity-70", "cursor-not-allowed");
+    saveBtn.innerHTML = "Saving...";
+
     try {
-        await db.collection("batchPresets").doc(id).update({ name, cost, price, qty });
-    } catch(e) {
-        console.error("Save failed", e);
-        alert("Failed to save changes. Please refresh.");
-        loadPresets();
+      await db.collection("batchPresets").doc(id).update({ name, cost, price, qty });
+      const index = cachedPresets.findIndex(p => p.__id === id);
+      if (index !== -1) {
+        cachedPresets[index] = { ...cachedPresets[index], name, price, cost, qty };
+        renderPresetList(cachedPresets);
+      }
+      window.closeEditModal();
+    } catch (e) {
+      console.error("Save failed", e);
+      showModalError("modal-edit-error", "Failed to save changes. Please try again.");
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      saveBtn.innerHTML = originalLabel;
+    }
+  };
+
+  window.openDeleteModal = (id, name) => {
+    window.closeDeleteModal();
+    window.closeSaveModal();
+    window.closeEditModal();
+
+    const modal = document.createElement("div");
+    modal.id = "delete-modal-wrapper";
+    modal.className = "relative z-[9999]";
+
+    modal.innerHTML = `
+      <div id="delete-modal-backdrop" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+      <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+          <div class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md animate-modal-in">
+            <div class="px-6 pt-6 pb-2 flex justify-between items-start">
+              <div>
+                <h3 class="text-xs font-bold text-red-500 dark:text-red-400 uppercase tracking-widest mb-1">Delete Batch</h3>
+                <p class="text-xl font-bold text-slate-900 dark:text-white">Are you sure?</p>
+              </div>
+              <button type="button" onclick="window.closeDeleteModal()" class="rounded-full p-1 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="px-6 pb-4 space-y-4">
+              <p class="text-sm text-slate-600 dark:text-slate-300">
+                This will permanently remove <span class="font-semibold text-slate-900 dark:text-white">"${escapeHtml(name)}"</span> from saved batches.
+              </p>
+              <div id="delete-modal-error" class="hidden bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg text-xs"></div>
+            </div>
+
+            <div class="px-6 pb-6 pt-2 flex gap-3">
+              <button type="button" onclick="window.closeDeleteModal()" class="flex-1 inline-flex justify-center items-center rounded-xl bg-slate-100 dark:bg-slate-800 px-3 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                Cancel
+              </button>
+              <button id="delete-modal-confirm-btn" type="button" onclick="window.confirmDeletePreset('${id}')" class="flex-1 inline-flex justify-center items-center rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white hover:bg-red-500 transition-all">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.querySelectorAll('[id^="dropdown-"]').forEach(el => el.classList.add('hidden'));
+  };
+
+  window.closeDeleteModal = () => {
+    const el = document.getElementById("delete-modal-wrapper");
+    if (el) el.remove();
+  };
+
+  window.confirmDeletePreset = async (id) => {
+    const deleteBtn = document.getElementById("delete-modal-confirm-btn");
+    hideModalError("delete-modal-error");
+
+    if (!deleteBtn) return;
+    const originalLabel = deleteBtn.innerHTML;
+    deleteBtn.disabled = true;
+    deleteBtn.classList.add("opacity-70", "cursor-not-allowed");
+    deleteBtn.innerHTML = "Deleting...";
+
+    try {
+      await db.collection("batchPresets").doc(id).delete();
+      cachedPresets = cachedPresets.filter(p => p.__id !== id);
+      renderPresetList(cachedPresets);
+      window.closeDeleteModal();
+    } catch (e) {
+      console.error("Delete failed", e);
+      showModalError("delete-modal-error", "Failed to delete. Please try again.");
+      deleteBtn.disabled = false;
+      deleteBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      deleteBtn.innerHTML = originalLabel;
     }
   };
 
