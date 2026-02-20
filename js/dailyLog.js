@@ -532,7 +532,7 @@ async function renderEntriesTable(entries, emptyMsg) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800 uppercase tracking-wide">
                 Pending
             </span>
-            <button onclick="createInvoiceFromDailyLog('${docId}')" class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold hover:underline">
+            <button onclick="createInvoiceFromDailyLog('${docId}')" class="text-xs action-link">
                 Create Now
             </button>
         </div>`;
@@ -561,7 +561,7 @@ async function renderEntriesTable(entries, emptyMsg) {
           </td>
           <td class="px-4 py-4 text-right font-medium text-slate-700 dark:text-slate-200 rev-cell">₹${itemRev.toFixed(2)}</td>
           <td class="px-4 py-4 text-right text-slate-500 dark:text-slate-400 ing-cell" data-full-cost="${totalCost}">₹${totalCost.toFixed(2)}</td>
-          <td class="px-4 py-4 text-right font-bold text-emerald-600 dark:text-emerald-400 prof-cell">₹${itemProf.toFixed(2)}</td>
+          <td class="px-4 py-4 text-right font-extrabold text-emerald-600 dark:text-emerald-300 prof-cell">₹${itemProf.toFixed(2)}</td>
           
           <td class="px-4 py-4 status-cell text-center align-middle" data-status="${statusDataAttr}">
              ${statusHtml}
@@ -569,7 +569,7 @@ async function renderEntriesTable(entries, emptyMsg) {
 
           <td class="px-6 py-4 text-right">
             <div class="flex items-center justify-end gap-4 relative">
-              <button onclick="editEntry('${docId}', ${JSON.stringify(d).replace(/"/g, '&quot;')})" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition transform hover:scale-110" title="Edit">
+              <button onclick="editEntry('${docId}', ${JSON.stringify(d).replace(/"/g, '&quot;')})" class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition transform hover:scale-110 p-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20" title="Edit">
                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
               <button onclick="showDeleteConfirmation(this, '${docId}')" class="text-red-400 hover:text-red-600 transition transform hover:scale-110" title="Delete">
@@ -588,7 +588,7 @@ async function renderEntriesTable(entries, emptyMsg) {
           <td colspan="3" class="px-6 py-4 text-right uppercase text-xs tracking-wider text-slate-400 dark:text-slate-500">Totals (Visible):</td>
           <td id="tbl-total-revenue" class="px-4 py-4 text-right">₹0.00</td>
           <td id="tbl-total-cost" class="px-4 py-4 text-right">₹0.00</td>
-          <td id="tbl-total-profit" class="px-4 py-4 text-right text-emerald-700 dark:text-emerald-400">₹0.00</td>
+          <td id="tbl-total-profit" class="px-4 py-4 text-right font-extrabold text-emerald-700 dark:text-emerald-300">₹0.00</td>
           <td colspan="2"></td>
         </tr>
       </tfoot>

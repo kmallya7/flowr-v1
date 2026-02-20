@@ -579,11 +579,11 @@ window.loadDashboard = async function () {
             <div>
               <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">Color</label>
               <select id="custom-kpi-color" class="mt-1 w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
-                <option value="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">Blue</option>
-                <option value="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">Emerald</option>
+                <option value="tone-accent">Accent</option>
+                <option value="tone-success">Success</option>
                 <option value="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">Amber</option>
                 <option value="bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400">Pink</option>
-                <option value="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">Violet</option>
+                <option value="tone-info">Info</option>
                 <option value="bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400">Cyan</option>
               </select>
             </div>
@@ -970,7 +970,7 @@ window.loadDashboard = async function () {
       formula,
       format: $("custom-kpi-format").value || (metricMeta ? metricMeta.defaultFormat : "number"),
       iconKey: $("custom-kpi-icon").value || "trend",
-      colorClass: $("custom-kpi-color").value || "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+      colorClass: $("custom-kpi-color").value || "tone-accent",
       subtitle: ($("custom-kpi-subtitle").value || "").trim(),
       compareWithPrevious: mode === "metric" ? $("custom-kpi-compare").checked : false
     };
@@ -1330,7 +1330,7 @@ function renderSummaryCards(data) {
     },
     {
       id: "gross-profit",
-      html: createCardHTML("gross-profit", "Gross Profit", "₹" + data.grossProfit.toLocaleString('en-IN'), "Rev - Cost", profitChg, !profitChg.startsWith("-"), iTrend, "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400")
+      html: createCardHTML("gross-profit", "Gross Profit", "₹" + data.grossProfit.toLocaleString('en-IN'), "Rev - Cost", profitChg, !profitChg.startsWith("-"), iTrend, "tone-success")
     },
     {
       id: "actual-profit",
@@ -1358,7 +1358,7 @@ function renderSummaryCards(data) {
     },
     {
       id: "best-seller",
-      html: createCardHTML("best-seller", "Best Seller", data.bestSelling ? data.bestSelling.name : "N/A", data.bestSelling ? `Qty: ${data.bestSelling.qty}` : "-", "", true, iStar, "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")
+      html: createCardHTML("best-seller", "Best Seller", data.bestSelling ? data.bestSelling.name : "N/A", data.bestSelling ? `Qty: ${data.bestSelling.qty}` : "-", "", true, iStar, "tone-accent")
     },
     {
       id: "worst-seller",
@@ -1382,7 +1382,7 @@ function renderSummaryCards(data) {
     },
     {
       id: "total-rev",
-      html: createCardHTML("total-rev", "Total Revenue", "₹" + data.totalRevenue.toLocaleString('en-IN'), "Gross Income", revenueChg, !revenueChg.startsWith("-"), iRupee, "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")
+      html: createCardHTML("total-rev", "Total Revenue", "₹" + data.totalRevenue.toLocaleString('en-IN'), "Gross Income", revenueChg, !revenueChg.startsWith("-"), iRupee, "tone-accent")
     }
   ];
 
@@ -1419,7 +1419,7 @@ function renderSummaryCards(data) {
           trend,
           trendGood,
           icons[kpi.iconKey] || icons.trend,
-          kpi.colorClass || "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
+          kpi.colorClass || "tone-accent",
           { allowDelete: true }
         )
       };

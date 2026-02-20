@@ -22,6 +22,51 @@ const injectStyles = () => {
         .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 0.3s ease-out, transform 0.3s ease-out; }
         .modal-exit { opacity: 1; transform: scale(1); }
         .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 0.2s ease-in, transform 0.2s ease-in; }
+        .calc-invalid { border-color: #f87171 !important; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2) !important; }
+        .calc-field-error { display: none; margin-top: 4px; font-size: 11px; line-height: 1.3; color: #ef4444; }
+        .calc-field-error.has-error { display: block; }
+        .calc-form-error { min-height: 18px; margin-top: 8px; font-size: 12px; color: #ef4444; font-weight: 600; }
+        @media (max-width: 1023px) {
+            #finalSummaryDock {
+                position: sticky;
+                bottom: 12px;
+                z-index: 25;
+                padding: 10px;
+                border-radius: 16px;
+                backdrop-filter: blur(8px);
+                background: rgba(248, 250, 252, 0.72);
+                border: 1px solid rgba(148, 163, 184, 0.35);
+                box-shadow: 0 10px 32px -18px rgba(15, 23, 42, 0.45);
+            }
+            .dark #finalSummaryDock {
+                background: rgba(15, 23, 42, 0.68);
+                border-color: rgba(51, 65, 85, 0.6);
+                box-shadow: 0 12px 32px -20px rgba(2, 6, 23, 0.85);
+            }
+            #finalSummary .summary-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+                padding: 12px;
+            }
+            #finalSummary .summary-grid .summary-stat-box {
+                min-width: 0;
+            }
+            #finalSummary .summary-grid .summary-stat-box > div:first-child {
+                font-size: 10px;
+                margin-bottom: 2px;
+                letter-spacing: 0.03em;
+            }
+            #finalSummary .summary-grid .summary-stat-box > div:last-child {
+                font-size: 15px;
+                line-height: 1.2;
+                word-break: break-word;
+            }
+            #finalSummary .summary-grid .summary-stat-box.bg-blue-600 {
+                transform: none;
+                box-shadow: none;
+                padding: 10px;
+            }
+        }
     `;
     document.head.appendChild(style);
 };
@@ -104,7 +149,14 @@ const rearrangeLayout = () => {
     summaryRow.className = "w-full";
     const summaryContainer = byId('finalSummary') || document.createElement('div');
     summaryContainer.id = "finalSummary";
-    summaryRow.appendChild(summaryContainer);
+    summaryContainer.classList.add('w-full');
+
+    const summaryDock = document.createElement('div');
+    summaryDock.id = "finalSummaryDock";
+    summaryDock.className = "w-full";
+    summaryDock.appendChild(summaryContainer);
+
+    summaryRow.appendChild(summaryDock);
 
     // --- SECTION C: THE DIVIDER ---
     const divider = document.createElement('div');
@@ -262,6 +314,10 @@ class BakingApp {
             calcAmount: document.getElementById("usedAmount"),
             calcUnit: document.getElementById("usedUnit"),
             calcBtn: document.getElementById("calcBtn"),
+            recipeForm: document.getElementById("recipeForm"),
+            ingredientOptions: document.getElementById("ingredientOptions"),
+            calcFinalBtn: document.getElementById("calcFinalBtn"),
+            resetFinalBtn: document.getElementById("resetFinalBtn"),
             tableBody: document.getElementById("ingredientsTableBody"),
             costTableBody: document.getElementById("costTableBody"),
             finalSummary: document.getElementById("finalSummary"),
@@ -273,12 +329,14 @@ class BakingApp {
             elec: document.getElementById("electricityCost"),
             profit: document.getElementById("profitPercent"),
         };
+        this.defaultIngredientBtnHtml = this.els.ingBtn ? this.els.ingBtn.innerHTML : "Add";
 
         this.init();
     }
 
     init() {
         if (!db) { console.error("Firebase not initialized"); return; }
+        this.ensureRecipeValidationUI();
         this.loadIngredients();
         this.restoreSession();
 
@@ -341,8 +399,28 @@ class BakingApp {
             });
         }
 
-        if(this.els.select) this.els.select.addEventListener("change", (e) => this.handleIngredientSelect(e));
+        if(this.els.select) {
+            const onIngredientInput = (e) => {
+                this.clearFieldError("ingredientSelect");
+                this.clearFormError();
+                this.handleIngredientSelect(e);
+            };
+            this.els.select.addEventListener("input", onIngredientInput);
+            this.els.select.addEventListener("change", onIngredientInput);
+        }
+        if(this.els.calcAmount) {
+            this.els.calcAmount.addEventListener("input", () => {
+                this.clearFieldError("usedAmount");
+                this.clearFormError();
+            });
+        }
         if(this.els.calcBtn) this.els.calcBtn.addEventListener("click", () => this.addToRecipe());
+        if(this.els.recipeForm) {
+            this.els.recipeForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                this.addToRecipe();
+            });
+        }
         if(this.els.ingForm) this.els.ingForm.addEventListener("submit", (e) => this.handleIngredientSubmit(e));
 
         // Live Cost Calculation
@@ -371,14 +449,121 @@ class BakingApp {
             });
         }
 
-        const allBtns = Array.from(document.querySelectorAll('button'));
-        const clearBtn = allBtns.find(el => el.innerText && el.innerText.trim() === 'Clear');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', (e) => {
+        if (this.els.resetFinalBtn) {
+            this.els.resetFinalBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.clearOverheads();
             });
         }
+
+        if (this.els.calcFinalBtn) {
+            this.els.calcFinalBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.renderFinalSummary();
+                this.els.finalSummary?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        }
+
+        this.renderCostTable();
+    }
+
+    normalizeIngredientName(name = "") {
+        return name.trim().toLowerCase();
+    }
+
+    findIngredientByInput(value = "") {
+        const normalized = this.normalizeIngredientName(value);
+        if(!normalized) return null;
+        return this.ingredients.find((ing) => this.normalizeIngredientName(ing.name) === normalized) || null;
+    }
+
+    ensureRecipeValidationUI() {
+        if(!this.els.recipeForm) return;
+        const fieldMap = {
+            ingredientSelect: this.els.select,
+            usedAmount: this.els.calcAmount,
+            usedUnit: this.els.calcUnit,
+        };
+
+        Object.entries(fieldMap).forEach(([fieldId, field]) => {
+            if(!field || !field.parentElement) return;
+            const existingError = field.parentElement.querySelector(`[data-for="${fieldId}"]`);
+            if (existingError) return;
+
+            const errorEl = document.createElement("p");
+            errorEl.className = "calc-field-error";
+            errorEl.dataset.for = fieldId;
+            errorEl.setAttribute("aria-live", "polite");
+            field.parentElement.appendChild(errorEl);
+        });
+
+        if (!this.els.recipeForm.querySelector('[data-role="recipe-form-error"]')) {
+            const formError = document.createElement("p");
+            formError.className = "calc-form-error";
+            formError.dataset.role = "recipe-form-error";
+            formError.setAttribute("aria-live", "polite");
+            this.els.recipeForm.appendChild(formError);
+        }
+    }
+
+    setFieldError(fieldId, message) {
+        const field = document.getElementById(fieldId);
+        if(!field) return;
+        field.classList.add("calc-invalid");
+        const errorEl = field.parentElement?.querySelector(`[data-for="${fieldId}"]`);
+        if(errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.add("has-error");
+        }
+    }
+
+    clearFieldError(fieldId) {
+        const field = document.getElementById(fieldId);
+        if(!field) return;
+        field.classList.remove("calc-invalid");
+        const errorEl = field.parentElement?.querySelector(`[data-for="${fieldId}"]`);
+        if(errorEl) {
+            errorEl.textContent = "";
+            errorEl.classList.remove("has-error");
+        }
+    }
+
+    setFormError(message) {
+        if(!this.els.recipeForm) return;
+        const el = this.els.recipeForm.querySelector('[data-role="recipe-form-error"]');
+        if(el) el.textContent = message;
+    }
+
+    clearFormError() {
+        if(!this.els.recipeForm) return;
+        const el = this.els.recipeForm.querySelector('[data-role="recipe-form-error"]');
+        if(el) el.textContent = "";
+    }
+
+    validateRecipeInput() {
+        let isValid = true;
+        const name = this.els.select?.value?.trim();
+        const amount = parseFloat(this.els.calcAmount?.value);
+        const selectedIngredient = this.findIngredientByInput(name);
+
+        this.clearFieldError("ingredientSelect");
+        this.clearFieldError("usedAmount");
+        this.clearFormError();
+
+        if(!name) {
+            isValid = false;
+            this.setFieldError("ingredientSelect", "Please pick an ingredient.");
+        } else if(!selectedIngredient) {
+            isValid = false;
+            this.setFieldError("ingredientSelect", "Select a valid ingredient from suggestions or add it in Manage Pantry.");
+        }
+
+        if(isNaN(amount) || amount <= 0) {
+            isValid = false;
+            this.setFieldError("usedAmount", "Enter an amount greater than 0.");
+        }
+
+        return { isValid, amount, name, selectedIngredient };
     }
 
     // --- Modal Handling ---
@@ -462,6 +647,14 @@ class BakingApp {
         notyf.success("Overheads cleared");
     }
 
+    resetIngredientFormState() {
+        if(this.els.ingForm) this.els.ingForm.reset();
+        if(this.els.ingBtn) {
+            delete this.els.ingBtn.dataset.editingId;
+            this.els.ingBtn.innerHTML = this.defaultIngredientBtnHtml;
+        }
+    }
+
     handleEditClick(id) {
         const ing = this.ingredients.find(i => i.id === id);
         if(!ing) return;
@@ -497,22 +690,22 @@ class BakingApp {
             if(this.els.tableBody) this.els.tableBody.innerHTML = "";
             
             const currentVal = this.els.select ? this.els.select.value : "";
-            if(this.els.select) this.els.select.innerHTML = '<option value="">Select ingredient...</option>';
+            if(this.els.ingredientOptions) this.els.ingredientOptions.innerHTML = "";
 
             snapshot.forEach(doc => {
                 const ing = { id: doc.id, ...doc.data() };
                 this.ingredients.push(ing);
                 this.renderIngredientRow(ing);
-                
-                if(this.els.select) {
+
+                if(this.els.ingredientOptions) {
                     const opt = document.createElement("option");
                     opt.value = ing.name;
-                    opt.textContent = ing.name;
-                    this.els.select.appendChild(opt);
+                    this.els.ingredientOptions.appendChild(opt);
                 }
             });
             
             if(this.els.select && currentVal) this.els.select.value = currentVal;
+            if(this.els.select) this.handleIngredientSelect({ target: this.els.select });
             if(window.feather) window.feather.replace();
             
         } catch (error) { console.error("Error loading ingredients:", error); }
@@ -565,13 +758,13 @@ class BakingApp {
             if (editingId) {
                 await db.collection("ingredients").doc(editingId).update(data);
                 notyf.success("Ingredient Updated");
-                if(this.els.ingBtn) delete this.els.ingBtn.dataset.editingId;
             } else {
                 await db.collection("ingredients").add(data);
                 notyf.success("Ingredient Added");
             }
             this.closeModal(); 
             await this.loadIngredients();
+            this.resetIngredientFormState();
             
             if(this.els.select) {
                 this.els.select.value = name; 
@@ -588,9 +781,10 @@ class BakingApp {
 
     handleIngredientSelect(e) {
         const name = e.target.value;
-        const ing = this.ingredients.find(i => i.name === name);
+        const ing = this.findIngredientByInput(name);
         this.els.calcUnit.innerHTML = "";
         if(ing) {
+            if(this.els.select) this.els.select.value = ing.name;
             const units = (ing.packageUnit === 'g' || ing.packageUnit === 'kg') ? ['g', 'kg'] : ['ml', 'L'];
             units.forEach(u => {
                 const opt = document.createElement("option");
@@ -602,22 +796,28 @@ class BakingApp {
     }
 
     addToRecipe() {
-        const name = this.els.select.value;
-        const amount = parseFloat(this.els.calcAmount.value);
-        const unit = this.els.calcUnit.value;
-        if(!name || isNaN(amount) || amount <= 0) {
-            this.els.calcAmount.style.borderColor = "red";
+        const { isValid, amount, name, selectedIngredient } = this.validateRecipeInput();
+        if(!isValid) {
+            this.setFormError("Fix highlighted fields to add ingredient.");
             return;
         }
-        const ing = this.ingredients.find(i => i.name === name);
-        if(!ing) return;
+
+        const unit = this.els.calcUnit.value;
+        const ing = selectedIngredient || this.findIngredientByInput(name);
+        if(!ing) {
+            this.setFieldError("ingredientSelect", "Selected ingredient is unavailable.");
+            this.setFormError("Please reselect ingredient and try again.");
+            return;
+        }
         const toBase = (val, u) => (u === 'kg' || u === 'L') ? val * 1000 : val;
         const cost = (toBase(amount, unit) / toBase(ing.packageSize, ing.packageUnit)) * ing.packageCost;
 
-        this.costRows.push({ name, amount, unit, cost });
+        this.costRows.push({ name: ing.name, amount, unit, cost });
         this.renderCostTable();
         this.saveSession();
         this.els.calcAmount.value = "";
+        this.clearFieldError("usedAmount");
+        this.clearFormError();
         this.els.calcAmount.focus();
     }
 
@@ -690,11 +890,13 @@ class BakingApp {
             (parseFloat(this.els.pack?.value) || 0) +
             (parseFloat(this.els.elec?.value) || 0);
 
-        const profitMargin = parseFloat(this.els.profit?.value) || 0;
+        const rawProfitMargin = parseFloat(this.els.profit?.value);
+        const profitMargin = Number.isFinite(rawProfitMargin) ? rawProfitMargin : 0;
+        const invalidProfitMargin = profitMargin < 0 || profitMargin >= 100;
         const totalExpenses = recipeCost + overheads;
         
         let sellPrice = totalExpenses;
-        if(profitMargin < 100) { sellPrice = totalExpenses / (1 - (profitMargin / 100)); }
+        if(!invalidProfitMargin) { sellPrice = totalExpenses / (1 - (profitMargin / 100)); }
         const profitAmount = sellPrice - totalExpenses;
 
         const formattedPrice = formatCurrency(sellPrice);
@@ -703,7 +905,7 @@ class BakingApp {
             : (formattedPrice.length > 7 ? "text-2xl" : "text-3xl");
 
         this.els.finalSummary.innerHTML = `
-            <div class="bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-6 text-center animate-fade-in-up shadow-sm">
+            <div class="summary-grid bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-3 gap-6 text-center animate-fade-in-up shadow-sm">
                 <div class="summary-stat-box">
                     <div class="text-xs uppercase font-bold text-slate-400 mb-1">Total Expenses</div>
                     <div class="text-2xl font-bold text-slate-700 dark:text-slate-200">${formatCurrency(totalExpenses)}</div>
@@ -719,6 +921,7 @@ class BakingApp {
                     </div>
                 </div>
             </div>
+            ${invalidProfitMargin ? '<p class="mt-3 text-xs font-semibold text-red-500">Profit margin must be between 0 and 99.99% for a valid recommended price.</p>' : ''}
         `;
     }
 
@@ -727,7 +930,10 @@ class BakingApp {
             rows: this.costRows,
             overheads: {
                 labour: this.els.labour?.value,
+                maint: this.els.maint?.value,
+                license: this.els.license?.value,
                 pack: this.els.pack?.value,
+                elec: this.els.elec?.value,
                 profit: this.els.profit?.value
             }
         };
@@ -742,10 +948,12 @@ class BakingApp {
                 this.costRows = data.rows || [];
                 if(data.overheads) {
                     if(this.els.labour) this.els.labour.value = data.overheads.labour || 0;
+                    if(this.els.maint) this.els.maint.value = data.overheads.maint || 0;
+                    if(this.els.license) this.els.license.value = data.overheads.license || 0;
                     if(this.els.pack) this.els.pack.value = data.overheads.pack || 0;
+                    if(this.els.elec) this.els.elec.value = data.overheads.elec || 0;
                     if(this.els.profit) this.els.profit.value = data.overheads.profit || 20;
                 }
-                this.renderCostTable();
             } catch(e) {}
         }
     }

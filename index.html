@@ -44,19 +44,254 @@
 
   <style>
     :root {
-      --primary: #2563eb; 
+      --primary: #1b4f55;
+      --primary-rgb: 27, 79, 85;
+      --primary-strong: #10393f;
+      --primary-soft: rgba(27, 79, 85, 0.14);
+      --app-bg: #f7f9fa;
+      --app-text: #111827;
+      --surface-1: #ffffff;
+      --surface-2: #e6ebee;
+      --border-soft: rgba(54, 69, 79, 0.24);
+      --success: #1b4f55;
+      --success-rgb: 27, 79, 85;
+      --success-soft: rgba(27, 79, 85, 0.12);
+      --info: #36454f;
+      --info-rgb: 54, 69, 79;
+      --info-soft: rgba(54, 69, 79, 0.12);
+      --nav-text: #36454f;
+      --nav-hover-bg: #e6ebee;
+      --nav-hover-text: #111827;
+      --header-bg: rgba(255, 255, 255, 0.86);
+      --card-shadow: 0 10px 24px -18px rgba(15, 26, 41, 0.26);
       --sidebar-width: 17rem;
       --sidebar-width-collapsed: 5rem;
+      --motion-fast: 180ms;
+      --motion-base: 320ms;
+      --motion-slow: 560ms;
+      --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+      --tippy-bg: #0f172a;
+      --tippy-fg: #f8fafc;
+      --tippy-border: rgba(148, 163, 184, 0.3);
+      --tippy-shadow: 0 12px 24px -16px rgba(2, 6, 23, 0.9);
+    }
+    html.dark {
+      --primary: #1b4f55;
+      --primary-rgb: 27, 79, 85;
+      --primary-strong: #2f6e76;
+      --primary-soft: rgba(27, 79, 85, 0.28);
+      --app-bg: #0f1a29;
+      --app-text: #e8eef2;
+      --surface-1: #1a2b3d;
+      --surface-2: #36454f;
+      --border-soft: rgba(194, 201, 204, 0.34);
+      --success: #46a0ab;
+      --success-rgb: 70, 160, 171;
+      --success-soft: rgba(70, 160, 171, 0.22);
+      --info: #c2c9cc;
+      --info-rgb: 194, 201, 204;
+      --info-soft: rgba(194, 201, 204, 0.2);
+      --nav-text: #c2c9cc;
+      --nav-hover-bg: #1b4f55;
+      --nav-hover-text: #f7f9fa;
+      --header-bg: rgba(15, 26, 41, 0.84);
+      --card-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.75);
+      --tippy-bg: #f8fafc;
+      --tippy-fg: #0f172a;
+      --tippy-border: rgba(148, 163, 184, 0.55);
+      --tippy-shadow: 0 14px 30px -20px rgba(148, 163, 184, 0.65);
     }
     
-    body { transition: background-color 0.3s ease, color 0.3s ease; }
+    body {
+      background-color: var(--app-bg) !important;
+      color: var(--app-text) !important;
+      transition: background-color var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard);
+    }
+
+    /* --- Global Theme Bridge (applies across HTML + JS-rendered sections) --- */
+    .bg-white { background-color: var(--surface-1) !important; }
+    .bg-slate-50 { background-color: color-mix(in srgb, var(--surface-1) 68%, var(--surface-2)) !important; }
+    .bg-slate-100 { background-color: var(--surface-2) !important; }
+    .text-slate-900 { color: color-mix(in srgb, var(--app-text) 92%, black) !important; }
+    .text-slate-800 { color: var(--app-text) !important; }
+    .text-slate-700 { color: color-mix(in srgb, var(--app-text) 84%, white) !important; }
+    .text-slate-600 { color: color-mix(in srgb, var(--app-text) 72%, white) !important; }
+    .text-slate-500 { color: color-mix(in srgb, var(--app-text) 55%, white) !important; }
+    .text-slate-400 { color: color-mix(in srgb, var(--app-text) 42%, white) !important; }
+    .border-slate-200 { border-color: var(--border-soft) !important; }
+    .border-slate-100 { border-color: color-mix(in srgb, var(--border-soft) 70%, transparent) !important; }
+
+    .dark .dark\:bg-slate-950 { background-color: var(--app-bg) !important; }
+    .dark .dark\:bg-slate-900 { background-color: var(--surface-1) !important; }
+    .dark .dark\:bg-slate-800 { background-color: var(--surface-2) !important; }
+    .dark .dark\:bg-slate-700 { background-color: color-mix(in srgb, var(--surface-2) 80%, #4a5c67) !important; }
+    .dark .dark\:bg-slate-900\/80 { background-color: color-mix(in srgb, var(--surface-1) 80%, transparent) !important; }
+    .dark .dark\:bg-slate-950\/95 { background-color: color-mix(in srgb, var(--app-bg) 95%, transparent) !important; }
+    .dark .dark\:text-slate-100 { color: var(--app-text) !important; }
+    .dark .dark\:text-slate-200 { color: color-mix(in srgb, var(--app-text) 88%, #fff) !important; }
+    .dark .dark\:text-slate-300 { color: color-mix(in srgb, var(--app-text) 76%, #fff) !important; }
+    .dark .dark\:text-slate-400 { color: color-mix(in srgb, var(--app-text) 64%, #fff) !important; }
+    .dark .dark\:border-slate-800 { border-color: var(--border-soft) !important; }
+    .dark .dark\:border-slate-700 { border-color: color-mix(in srgb, var(--border-soft) 86%, #70828d) !important; }
+    .dark .dark\:border-slate-600 { border-color: color-mix(in srgb, var(--border-soft) 78%, #8ea0a9) !important; }
+
+    .bg-blue-600 { background-color: var(--primary) !important; }
+    .hover\:bg-blue-700:hover { background-color: color-mix(in srgb, var(--primary) 82%, #10393f) !important; }
+    .dark .dark\:bg-blue-600 { background-color: var(--primary) !important; }
+    .dark .dark\:hover\:bg-blue-700:hover { background-color: color-mix(in srgb, var(--primary) 82%, #10393f) !important; }
+    .bg-blue-500 { background-color: var(--primary) !important; }
+    .text-blue-700 { color: var(--primary-strong) !important; }
+    .text-blue-600 { color: var(--primary) !important; }
+    .text-blue-500 { color: color-mix(in srgb, var(--primary) 88%, white) !important; }
+    .dark .dark\:text-blue-400 { color: color-mix(in srgb, var(--primary) 38%, white) !important; }
+    .dark .dark\:text-blue-500 { color: color-mix(in srgb, var(--primary) 46%, white) !important; }
+    .bg-blue-50 { background-color: var(--primary-soft) !important; }
+    .bg-blue-100 { background-color: color-mix(in srgb, var(--primary) 18%, var(--surface-1)) !important; }
+    .border-blue-200 { border-color: color-mix(in srgb, var(--primary) 28%, var(--surface-1)) !important; }
+    .border-blue-100 { border-color: color-mix(in srgb, var(--primary) 20%, var(--surface-1)) !important; }
+    .hover\:bg-blue-50:hover { background-color: color-mix(in srgb, var(--primary-soft) 86%, var(--surface-1)) !important; }
+    .hover\:bg-blue-100:hover { background-color: color-mix(in srgb, var(--primary) 22%, var(--surface-1)) !important; }
+    .hover\:text-blue-600:hover { color: var(--primary) !important; }
+    .hover\:text-blue-700:hover { color: var(--primary-strong) !important; }
+    .group:hover .group-hover\:text-blue-500 { color: color-mix(in srgb, var(--primary) 90%, white) !important; }
+    .group:hover .group-hover\:text-blue-600 { color: var(--primary) !important; }
+    .group:hover .group-hover\:text-blue-700 { color: var(--primary-strong) !important; }
+    .group:hover .group-hover\:bg-blue-100 { background-color: color-mix(in srgb, var(--primary) 22%, var(--surface-1)) !important; }
+    .group:hover .group-hover\:bg-blue-600 { background-color: var(--primary) !important; }
+    .focus\:ring-blue-500:focus { --tw-ring-color: color-mix(in srgb, var(--primary) 72%, white) !important; }
+    .focus\:border-blue-500:focus { border-color: color-mix(in srgb, var(--primary) 72%, white) !important; }
+    .focus-within\:ring-blue-500\/50:focus-within { --tw-ring-color: color-mix(in srgb, var(--primary) 52%, white) !important; }
+    .focus-within\:border-blue-500:focus-within { border-color: color-mix(in srgb, var(--primary) 72%, white) !important; }
+    .border-blue-500 { border-color: color-mix(in srgb, var(--primary) 75%, white) !important; }
+    .hover\:border-blue-500:hover { border-color: color-mix(in srgb, var(--primary) 75%, white) !important; }
+    .dark .dark\:bg-blue-900\/10 { background-color: color-mix(in srgb, var(--primary) 14%, transparent) !important; }
+    .dark .dark\:bg-blue-900\/20 { background-color: color-mix(in srgb, var(--primary) 22%, transparent) !important; }
+    .dark .dark\:bg-blue-900\/30 { background-color: color-mix(in srgb, var(--primary) 30%, transparent) !important; }
+    .dark .dark\:bg-blue-900\/40 { background-color: color-mix(in srgb, var(--primary) 38%, transparent) !important; }
+    .dark .dark\:bg-blue-900\/50 { background-color: color-mix(in srgb, var(--primary) 46%, transparent) !important; }
+    .dark .dark\:border-blue-800 { border-color: color-mix(in srgb, var(--primary) 48%, #8ea0a9) !important; }
+    .dark .dark\:hover\:bg-blue-900\/20:hover { background-color: color-mix(in srgb, var(--primary) 24%, transparent) !important; }
+    .dark .dark\:hover\:bg-blue-900\/40:hover { background-color: color-mix(in srgb, var(--primary) 40%, transparent) !important; }
+    .dark .group:hover .dark\:group-hover\:bg-blue-900\/20 { background-color: color-mix(in srgb, var(--primary) 24%, transparent) !important; }
+    .dark .group:hover .dark\:group-hover\:text-blue-400 { color: color-mix(in srgb, var(--primary) 34%, white) !important; }
+
+    .text-emerald-700 { color: var(--success) !important; }
+    .text-emerald-600 { color: var(--success) !important; }
+    .text-emerald-500 { color: color-mix(in srgb, var(--success) 88%, white) !important; }
+    .bg-emerald-50 { background-color: var(--success-soft) !important; }
+    .bg-emerald-100 { background-color: color-mix(in srgb, var(--success) 16%, var(--surface-1)) !important; }
+    .border-emerald-200 { border-color: color-mix(in srgb, var(--success) 30%, var(--surface-1)) !important; }
+    .border-emerald-100 { border-color: color-mix(in srgb, var(--success) 22%, var(--surface-1)) !important; }
+    .hover\:bg-emerald-700:hover { background-color: color-mix(in srgb, var(--success) 82%, #0f3136) !important; }
+    .hover\:text-emerald-600:hover { color: var(--success) !important; }
+    .dark .dark\:text-emerald-400 { color: color-mix(in srgb, var(--success) 24%, white) !important; }
+    .dark .dark\:text-emerald-300 { color: color-mix(in srgb, var(--success) 16%, white) !important; }
+    .dark .dark\:bg-emerald-900\/10 { background-color: color-mix(in srgb, var(--success) 14%, transparent) !important; }
+    .dark .dark\:bg-emerald-900\/20 { background-color: color-mix(in srgb, var(--success) 22%, transparent) !important; }
+    .dark .dark\:bg-emerald-900\/30 { background-color: color-mix(in srgb, var(--success) 30%, transparent) !important; }
+    .dark .dark\:bg-emerald-900\/40 { background-color: color-mix(in srgb, var(--success) 38%, transparent) !important; }
+    .dark .dark\:border-emerald-800 { border-color: color-mix(in srgb, var(--success) 46%, #8ea0a9) !important; }
+
+    .text-purple-700 { color: var(--info) !important; }
+    .text-purple-600 { color: var(--info) !important; }
+    .text-purple-500 { color: color-mix(in srgb, var(--info) 90%, white) !important; }
+    .bg-purple-50 { background-color: var(--info-soft) !important; }
+    .bg-purple-100 { background-color: color-mix(in srgb, var(--info) 14%, var(--surface-1)) !important; }
+    .border-purple-200 { border-color: color-mix(in srgb, var(--info) 30%, var(--surface-1)) !important; }
+    .hover\:text-purple-600:hover { color: var(--info) !important; }
+    .dark .dark\:text-purple-400 { color: color-mix(in srgb, var(--info) 92%, white) !important; }
+    .dark .dark\:bg-purple-900\/20 { background-color: color-mix(in srgb, var(--info) 20%, transparent) !important; }
+    .dark .dark\:bg-purple-900\/30 { background-color: color-mix(in srgb, var(--info) 28%, transparent) !important; }
+
+    /* Semantic tone utilities for JS-rendered templates */
+    .tone-accent {
+      background-color: var(--primary-soft) !important;
+      color: var(--primary) !important;
+      border-color: color-mix(in srgb, var(--primary) 28%, var(--surface-1)) !important;
+    }
+    .tone-success {
+      background-color: var(--success-soft) !important;
+      color: var(--success) !important;
+      border-color: color-mix(in srgb, var(--success) 30%, var(--surface-1)) !important;
+    }
+    .tone-info {
+      background-color: var(--info-soft) !important;
+      color: var(--info) !important;
+      border-color: color-mix(in srgb, var(--info) 30%, var(--surface-1)) !important;
+    }
+    .tone-warning {
+      background-color: rgba(245, 158, 11, 0.14) !important;
+      color: #b45309 !important;
+      border-color: rgba(245, 158, 11, 0.28) !important;
+    }
+    .tone-danger {
+      background-color: rgba(239, 68, 68, 0.12) !important;
+      color: #b91c1c !important;
+      border-color: rgba(239, 68, 68, 0.3) !important;
+    }
+    .tone-neutral {
+      background-color: var(--surface-2) !important;
+      color: color-mix(in srgb, var(--app-text) 78%, white) !important;
+      border-color: var(--border-soft) !important;
+    }
+    .dark .tone-accent {
+      background-color: color-mix(in srgb, var(--primary) 24%, transparent) !important;
+      color: color-mix(in srgb, var(--primary) 90%, white) !important;
+      border-color: color-mix(in srgb, var(--primary) 46%, #8ea0a9) !important;
+    }
+    .dark .tone-success {
+      background-color: color-mix(in srgb, var(--success) 24%, transparent) !important;
+      color: color-mix(in srgb, var(--success) 90%, white) !important;
+      border-color: color-mix(in srgb, var(--success) 46%, #8ea0a9) !important;
+    }
+    .dark .tone-info {
+      background-color: color-mix(in srgb, var(--info) 22%, transparent) !important;
+      color: color-mix(in srgb, var(--info) 92%, white) !important;
+      border-color: color-mix(in srgb, var(--info) 44%, #8ea0a9) !important;
+    }
+    .dark .tone-warning {
+      background-color: rgba(245, 158, 11, 0.2) !important;
+      color: #fcd34d !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+    }
+    .dark .tone-danger {
+      background-color: rgba(239, 68, 68, 0.2) !important;
+      color: #fca5a5 !important;
+      border-color: rgba(239, 68, 68, 0.44) !important;
+    }
+    .dark .tone-neutral {
+      background-color: color-mix(in srgb, var(--surface-2) 88%, transparent) !important;
+      color: color-mix(in srgb, var(--app-text) 72%, white) !important;
+      border-color: var(--border-soft) !important;
+    }
+
+    .action-link {
+      color: var(--primary-strong) !important;
+      font-weight: 700;
+    }
+    .action-link:hover {
+      color: var(--primary) !important;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 2px;
+    }
+    .dark .action-link {
+      color: color-mix(in srgb, var(--primary) 34%, white) !important;
+    }
+    .dark .action-link:hover {
+      color: color-mix(in srgb, var(--primary) 24%, white) !important;
+    }
 
     /* --- Sidebar Animation Logic --- */
     #sidebar { 
       transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
       width: var(--sidebar-width); 
       z-index: 50; 
-      white-space: nowrap; 
+      white-space: nowrap;
+      background-color: var(--surface-1);
+      border-right-color: var(--border-soft);
+      box-shadow: 0 18px 34px -26px rgba(0, 0, 0, 0.45);
     }
 
     /* Fix for Profile Icon Centering */
@@ -96,6 +331,13 @@
         padding-left: 0;
         padding-right: 0;
         justify-content: center;
+    }
+
+    .sidebar-header {
+      border-color: var(--border-soft) !important;
+    }
+    .sidebar-header:hover {
+      background: color-mix(in srgb, var(--surface-2) 70%, transparent) !important;
     }
 
     /* --- Smooth Text Hiding --- */
@@ -138,13 +380,28 @@
       display: flex; 
       align-items: center; 
       border-radius: 0.75rem; 
-      transition: all 0.2s ease-in-out; 
+      transition: transform var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
       font-weight: 500; 
       margin-bottom: 0.25rem; 
-      color: #64748b; 
+      color: var(--nav-text); 
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
       
       /* Standard Padding */
       padding: 0.75rem 0.75rem 0.75rem 1.5rem; /* top right bottom left */
+    }
+
+    .nav-link::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(var(--primary-rgb), 0.24), rgba(194, 201, 204, 0.18));
+      opacity: 0;
+      transform: scale(0.95);
+      transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-base) var(--ease-emphasis);
+      z-index: -1;
     }
     
     /* When Collapsed: Perfect Center */
@@ -158,46 +415,195 @@
 
     /* Hover States */
     .nav-link:hover { 
-      background-color: #e2e8f0; 
-      color: #0f172a; 
-    }
-    .dark .nav-link:hover {
-      background-color: #334155; 
-      color: #ffffff;
+      background-color: var(--nav-hover-bg); 
+      color: var(--nav-hover-text); 
+      transform: translateX(3px);
     }
 
     .nav-link.active { 
-      background-color: #eff6ff; 
-      color: var(--primary); 
-      font-weight: 600; 
+      color: var(--primary-strong);
+      font-weight: 700;
+      background-color: color-mix(in srgb, var(--primary) 22%, var(--surface-1));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 45%, var(--surface-1));
+    }
+    .nav-link.active::before {
+      opacity: 0;
+      transform: none;
+      background: none;
+    }
+    .nav-link.active::after {
+      content: "";
+      position: absolute;
+      left: 0.3rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0.22rem;
+      height: 1.45rem;
+      border-radius: 999px;
+      background: var(--primary);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 66%, transparent);
+      opacity: 1;
     }
     .dark .nav-link.active {
-      background-color: #1e3a8a; 
-      color: #93c5fd; 
+      color: var(--nav-hover-text);
+      background-color: color-mix(in srgb, var(--primary) 56%, var(--surface-2));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 74%, #9fb0b8);
+      text-shadow: none;
+    }
+    .dark .nav-link.active::before {
+      opacity: 0;
+      background: none;
+    }
+    .dark .nav-link.active::after {
+      background: color-mix(in srgb, var(--primary) 26%, white);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 34%, white);
+    }
+    .dark .nav-link.active .nav-icon {
+      color: var(--nav-hover-text);
+      filter: none;
+    }
+    .nav-link.active:hover {
+      transform: none;
+    }
+    #sidebar.collapsed .nav-link.active {
+      justify-content: center;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 62%, var(--surface-1));
+    }
+    #sidebar.collapsed .nav-link.active::after {
+      left: 50%;
+      top: auto;
+      bottom: 0.35rem;
+      transform: translateX(-50%);
+      width: 1.4rem;
+      height: 0.2rem;
     }
 
     .nav-icon { width: 20px; height: 20px; flex-shrink: 0; transition: all 0.3s ease; }
 
+    .nav-link.active .nav-icon {
+      transform: scale(1.08);
+    }
+
+    .premium-header {
+      transition: backdrop-filter var(--motion-base) var(--ease-standard), background-color var(--motion-base) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+      background: var(--header-bg) !important;
+      border-color: var(--border-soft) !important;
+    }
+    .premium-header.is-scrolled {
+      background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+      box-shadow: 0 14px 30px -24px rgba(15, 26, 41, 0.45);
+      border-color: var(--border-soft);
+    }
+    .dark .premium-header.is-scrolled {
+      background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+      box-shadow: 0 16px 30px -24px rgba(0, 0, 0, 0.75);
+      border-color: var(--border-soft);
+    }
+
+    #activeSectionLabel {
+      transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-emphasis);
+      transform-origin: left center;
+    }
+    #activeSectionLabel.is-swapping {
+      opacity: 0;
+      transform: translateY(5px) scale(0.98);
+    }
+
+    .reveal-item {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+      transition: opacity var(--motion-slow) var(--ease-emphasis), transform var(--motion-slow) var(--ease-emphasis);
+      transition-delay: var(--reveal-delay, 0ms);
+      will-change: transform, opacity;
+    }
+    .reveal-item.is-revealed {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .parallax-blob {
+      transform: translate3d(0, calc(var(--parallax-shift, 0px) * var(--parallax-depth, 1)), 0);
+      transition: transform 100ms linear;
+      will-change: transform;
+    }
+
+    .premium-card {
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--card-shadow);
+      transition: transform var(--motion-base) var(--ease-emphasis), box-shadow var(--motion-base) var(--ease-emphasis), border-color var(--motion-fast) var(--ease-standard);
+    }
+    .premium-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 22px 42px -28px rgba(15, 26, 41, 0.55);
+      border-color: rgba(var(--primary-rgb), 0.38);
+    }
+    .dark .premium-card {
+      border-color: var(--border-soft);
+      box-shadow: var(--card-shadow);
+    }
+
+    .kpi-card {
+      position: relative;
+      isolation: isolate;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(120deg, rgba(37,99,235,0.45), rgba(16,185,129,0.35), rgba(249,115,22,0.45), rgba(37,99,235,0.45));
+      background-size: 300% 300%;
+      animation: kpi-gradient 8s linear infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      z-index: -1;
+      opacity: 0.9;
+    }
+    .dark .kpi-card::before {
+      opacity: 0.65;
+    }
+
+    @keyframes kpi-gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .magnetic-btn {
+      transition: transform var(--motion-fast) var(--ease-emphasis), box-shadow var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+      will-change: transform;
+    }
+    .magnetic-btn:hover {
+      box-shadow: 0 12px 28px -18px rgba(37, 99, 235, 0.9);
+    }
+
     /* Main Content Slide */
     main { transition: padding-left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+    #mainContent {
+      background-color: var(--app-bg) !important;
+      color: var(--app-text);
+    }
 
     /* Helpers */
     /* Improved Page Transitions */
 .page-section { 
   display: none; 
   opacity: 0; 
-  transform: translateY(20px) scale(0.98); /* Start slightly smaller and lower */
-  filter: blur(4px); /* Start slightly blurry */
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); /* "Apple-style" ease-out */
+  transform: scale(0.985); /* Universal center fade in */
+  transform-origin: center center;
+  filter: blur(2px);
+  transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1), transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), filter 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .page-section.show { 
   opacity: 1; 
-  transform: translateY(0) scale(1); 
+  transform: scale(1); 
   filter: blur(0);
 }
-    .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.5); }
-    .dark .glass { background: rgba(15, 23, 42, 0.90); border: 1px solid rgba(255,255,255,0.1); }
+    .glass { background: color-mix(in srgb, var(--surface-1) 90%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--border-soft); }
+    .dark .glass { background: color-mix(in srgb, var(--surface-1) 88%, transparent); border: 1px solid var(--border-soft); }
     
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -302,27 +708,93 @@
       66%, 81% { transform: translateY(-200%); }
       100% { transform: translateY(-300%); } 
     }
-/* Tippy Custom Theme */
-.tippy-box[data-theme~='custom'] {
-  background-color: #1e293b; /* Slate-800 */
-  color: #f8fafc; /* Slate-50 */
+/* Tippy Theme (auto-switches with app theme) */
+.tippy-box[data-theme~='flowr'] {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
   font-weight: 600;
   font-size: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 2px 6px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-.tippy-arrow {
-  color: #1e293b; /* Matches background */
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  box-shadow: 0 12px 24px -16px rgba(2, 6, 23, 0.9) !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
 }
 
-/* Dark Mode Adjustments for Tippy */
-.dark .tippy-box[data-theme~='custom'] {
-  background-color: #f8fafc; /* Slate-50 (White-ish) */
-  color: #0f172a; /* Slate-900 (Dark) */
+.tippy-box[data-theme~='flowr'] > .tippy-arrow:before {
+  color: #0f172a !important;
 }
-.dark .tippy-arrow {
-  color: #f8fafc;
+
+.dark .tippy-box[data-theme~='flowr'] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 2px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.8) !important;
+  box-shadow: 0 16px 32px -22px rgba(15, 23, 42, 0.55) !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.dark .tippy-box[data-theme~='flowr'] > .tippy-arrow:before {
+  color: #ffffff !important;
+}
+
+.tippy-content {
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+.command-dialog {
+  transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-emphasis);
+}
+.command-item {
+  transition: background-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+}
+.command-item:hover,
+.command-item.active {
+  background-color: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.28);
+  transform: translateY(-1px);
+}
+.dark .command-item:hover,
+.dark .command-item.active {
+  background-color: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.section-skeleton {
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+  background: linear-gradient(90deg, rgba(226,232,240,0.75) 25%, rgba(241,245,249,0.95) 50%, rgba(226,232,240,0.75) 75%);
+  background-size: 200% 100%;
+}
+.dark .section-skeleton {
+  background: linear-gradient(90deg, rgba(51,65,85,0.7) 25%, rgba(71,85,105,0.92) 50%, rgba(51,65,85,0.7) 75%);
+  background-size: 200% 100%;
+}
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
   </style>
@@ -584,21 +1056,29 @@
   <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden glass"></div>
 
   <main id="mainContent" class="md:pl-[17rem] min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-all duration-300">
-    <header class="h-16 flex items-center justify-between px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/60 dark:border-slate-800/60">
+    <header id="topHeader" class="premium-header h-16 flex items-center justify-between px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/60 dark:border-slate-800/60">
       <div class="flex items-center gap-4">
         <button id="sidebarToggleMobile" class="md:hidden p-2 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><i data-feather="menu"></i></button>
-        <p id="greetingText" class="text-sm font-medium text-slate-500 dark:text-slate-400">Welcome</p>
+        <p id="activeSectionLabel" class="text-sm font-semibold text-slate-600 dark:text-slate-300">Home</p>
       </div>
-      <button id="loginBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">Sign In</button>
+      <div class="flex items-center gap-2">
+        <button id="commandPaletteTriggerMobile" type="button" class="md:hidden inline-flex items-center gap-2 px-2.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 transition-colors">
+          <i data-feather="search" class="w-3.5 h-3.5"></i>
+        </button>
+        <button id="loginBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">Sign In</button>
+      </div>
+      <div class="absolute left-0 bottom-0 h-[2px] w-full bg-slate-200/70 dark:bg-slate-800/70">
+        <div id="sectionProgress" class="h-full w-0 bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 transition-all duration-500 ease-out"></div>
+      </div>
     </header>
 
     <div class="p-4 md:p-8 w-full mx-auto text-slate-800 dark:text-slate-200">
       
      <div id="home" class="page-section">
   
-  <div class="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-8 mb-6 shadow-2xl">
-    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-600 opacity-20 rounded-full blur-3xl -mt-10 -mr-10"></div>
-    <div class="absolute bottom-0 left-0 w-64 h-64 bg-blue-600 opacity-20 rounded-full blur-3xl -mb-10 -ml-10"></div>
+  <div class="relative overflow-hidden rounded-3xl bg-slate-900 text-white p-8 mb-6 shadow-2xl premium-card reveal-item" data-reveal style="--reveal-delay:40ms;">
+    <div class="parallax-blob absolute top-0 right-0 w-64 h-64 bg-indigo-600 opacity-20 rounded-full blur-3xl -mt-10 -mr-10" data-parallax data-depth="0.15"></div>
+    <div class="parallax-blob absolute bottom-0 left-0 w-64 h-64 bg-blue-600 opacity-20 rounded-full blur-3xl -mb-10 -ml-10" data-parallax data-depth="0.25"></div>
     
     <div class="relative z-10 flex flex-col md:flex-row justify-between items-end gap-4">
       <div>
@@ -610,6 +1090,13 @@
           <span id="heroGreeting">Hello</span>, <span id="heroName">Chef</span>
         </h1>
         <p class="text-slate-400 mt-2 text-sm">Your daily production command center.</p>
+        <button id="heroCommandTrigger" type="button" class="hidden md:inline-flex mt-5 w-full max-w-lg items-center justify-between gap-3 px-4 py-3 rounded-xl border border-white/20 bg-white/10 text-slate-100 hover:bg-white/15 hover:border-white/30 transition-all backdrop-blur-sm">
+          <span class="inline-flex items-center gap-3 text-sm font-semibold">
+            <i data-feather="search" class="w-4 h-4"></i>
+            Search anything...
+          </span>
+          <span class="text-[10px] px-2 py-1 rounded-md border border-white/25 text-slate-200/90">Ctrl/Cmd+K</span>
+        </button>
       </div>
       
       <div class="hidden md:block text-right">
@@ -620,7 +1107,7 @@
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-    <div onclick="showSection('workLog')" class="col-span-1 md:col-span-2 row-span-2 relative group cursor-pointer bg-gradient-to-br from-orange-500 to-rose-600 rounded-3xl p-8 text-white shadow-xl overflow-hidden transition-all hover:shadow-orange-500/25 hover:-translate-y-1">
+    <div onclick="showSection('workLog')" class="col-span-1 md:col-span-2 row-span-2 relative group cursor-pointer bg-gradient-to-br from-orange-500 to-rose-600 rounded-3xl p-8 text-white shadow-xl overflow-hidden transition-all hover:shadow-orange-500/25 hover:-translate-y-1 premium-card reveal-item" data-reveal style="--reveal-delay:80ms;">
       <div class="absolute -right-6 -bottom-6 text-white/10 group-hover:text-white/20 transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-12">
         <i data-feather="edit-3" style="width: 180px; height: 180px; stroke-width: 1;"></i>
       </div>
@@ -639,7 +1126,7 @@
       </div>
     </div>
 
-    <div onclick="showSection('dashboard')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500 transition-all cursor-pointer group hover:-translate-y-1">
+    <div onclick="showSection('dashboard')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item" data-reveal style="--reveal-delay:140ms;">
       <div class="flex items-center justify-between mb-4">
         <div class="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
           <i data-feather="pie-chart"></i>
@@ -650,7 +1137,7 @@
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Performance & Trends.</p>
     </div>
 
-    <div onclick="showSection('invoice')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all cursor-pointer group hover:-translate-y-1">
+    <div onclick="showSection('invoice')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item" data-reveal style="--reveal-delay:190ms;">
        <div class="flex items-center justify-between mb-4">
         <div class="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
           <i data-feather="file-text"></i>
@@ -661,7 +1148,7 @@
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate Client Bills.</p>
     </div>
 
-    <div onclick="showSection('recipeCalculator')" class="col-span-1 md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer group hover:-translate-y-1 flex items-center justify-between relative overflow-hidden">
+    <div onclick="showSection('recipeCalculator')" class="col-span-1 md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer group hover:-translate-y-1 flex items-center justify-between relative overflow-hidden premium-card reveal-item" data-reveal style="--reveal-delay:230ms;">
       <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 dark:bg-blue-900/10 rounded-full blur-2xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/20 transition-colors"></div>
       
       <div class="relative z-10">
@@ -683,25 +1170,25 @@
 
   </div>
 
-  <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+  <div class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800 reveal-item" data-reveal style="--reveal-delay:260ms;">
     <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Quick Actions</h3>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       
-      <button onclick="showSection('inventory')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group">
+      <button onclick="showSection('inventory')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
   <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-blue-500 transition-colors shadow-sm">
     <i data-feather="package" class="w-4 h-4"></i>
   </div>
   <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">Add Ingredient</span>
 </button>
 
-      <button onclick="showSection('clients')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group">
+      <button onclick="showSection('clients')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
         <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-emerald-500 transition-colors shadow-sm">
           <i data-feather="user-plus" class="w-4 h-4"></i>
         </div>
         <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">New Client</span>
       </button>
 
-      <button onclick="showSection('payments')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group">
+      <button onclick="showSection('payments')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
         <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-green-500 transition-colors shadow-sm">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 3h12"></path>
@@ -714,7 +1201,7 @@
         <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">Record Payment</span>
       </button>
 
-      <button onclick="showSection('orders')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group">
+      <button onclick="showSection('orders')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
         <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-orange-500 transition-colors shadow-sm">
           <i data-feather="shopping-bag" class="w-4 h-4"></i>
         </div>
@@ -758,23 +1245,24 @@
         Recipe Cost Calculator
       </h2>
       
-      <form id="recipeForm" class="flex flex-wrap gap-2 items-end mb-4 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
-        <div class="flex-1 min-w-[140px]">
+      <form id="recipeForm" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start mb-4 bg-slate-50 dark:bg-slate-800 p-4 rounded-xl">
+        <div class="md:col-span-5">
           <label class="text-xs font-bold text-slate-400">Ingredient</label>
-          <select id="ingredientSelect" class="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white"></select>
+          <input id="ingredientSelect" list="ingredientOptions" type="text" placeholder="Type ingredient name..." class="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white">
+          <datalist id="ingredientOptions"></datalist>
         </div>
-        <div class="w-24">
+        <div class="md:col-span-3">
           <label class="text-xs font-bold text-slate-400">Amount</label>
-          <input type="number" id="usedAmount" class="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white" placeholder="0">
+          <input type="number" id="usedAmount" class="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white" placeholder="0">
         </div>
-        <div class="w-24">
+        <div class="md:col-span-2">
           <label class="text-xs font-bold text-slate-400">Unit</label>
-          <select id="usedUnit" class="w-full p-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white"><option>Unit</option></select>
+          <select id="usedUnit" class="w-full p-2.5 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg text-sm dark:text-white"><option value="">Unit</option></select>
         </div>
-        <button type="button" id="calcBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700">Add</button>
+        <button type="button" id="calcBtn" class="md:col-span-2 w-full md:mt-6 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors">Add</button>
       </form>
-
-      <table class="w-full text-sm mb-4 border dark:border-slate-800 rounded-lg overflow-hidden">
+      <div class="overflow-x-auto no-scrollbar mb-4">
+      <table class="w-full min-w-[620px] text-sm border dark:border-slate-800 rounded-lg overflow-hidden">
         <thead class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200">
           <tr>
             <th class="p-2 text-left pl-4">Ingredient</th>
@@ -786,6 +1274,7 @@
         </thead>
         <tbody id="costTableBody" class="divide-y divide-indigo-50 dark:divide-indigo-900/20"></tbody>
       </table>
+      </div>
 
       <div class="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
         <button type="button" id="resetCalcBtn" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 border border-transparent transition-all duration-200">
@@ -1056,6 +1545,66 @@
           <p>Coming Soon</p>
         </div>
       </div>
+      <div id="admin" class="page-section">
+        <div class="max-w-6xl mx-auto space-y-6">
+          <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <i data-feather="settings" class="w-6 h-6 text-slate-500"></i>
+                  Admin
+                </h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Workspace controls, access, and defaults.</p>
+              </div>
+              <button class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors">
+                Save Changes
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Business Defaults</h3>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Business Name</label>
+                <input type="text" placeholder="Lush Patisserie" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Default Currency</label>
+                <select class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+                  <option>INR (Rs)</option>
+                  <option>USD ($)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-500 mb-1">Invoice Prefix</label>
+                <input type="text" placeholder="LP-" class="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm">
+              </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Access & Roles</h3>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <div>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Allow Staff Edits</p>
+                  <p class="text-xs text-slate-500">Staff can edit inventory and orders.</p>
+                </div>
+                <input type="checkbox" checked class="h-4 w-4">
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <div>
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Require Confirm Before Delete</p>
+                  <p class="text-xs text-slate-500">Prevents accidental removal of records.</p>
+                </div>
+                <input type="checkbox" checked class="h-4 w-4">
+              </div>
+              <button class="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                Manage Team
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="export" class="page-section">
         <div class="p-12 text-center text-slate-400">
           <i data-feather="upload-cloud" class="w-12 h-12 mx-auto mb-4 text-slate-300 dark:text-slate-600"></i>
@@ -1065,6 +1614,18 @@
       </div>
     </div>
   </main>
+
+  <div id="commandPalette" class="command-dialog fixed inset-0 z-[180] hidden">
+    <div id="commandPaletteBackdrop" class="absolute inset-0 bg-slate-900/45 backdrop-blur-sm"></div>
+    <div class="relative mx-auto mt-20 w-[92%] max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+        <i data-feather="search" class="w-4 h-4 text-slate-400"></i>
+        <input id="commandInput" type="text" autocomplete="off" placeholder="Search sections and quick actions..." class="w-full bg-transparent text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none" />
+        <span class="text-[10px] px-1.5 py-0.5 rounded border border-slate-300 dark:border-slate-600 text-slate-400">ESC</span>
+      </div>
+      <div id="commandList" class="max-h-[360px] overflow-y-auto p-2"></div>
+    </div>
+  </div>
 
   <script src="js/firebase.js"></script>
   <script src="js/batch.js"></script> 
@@ -1106,6 +1667,16 @@
     const themeBtn = document.getElementById('darkModeToggle');
     const themeIcon = document.getElementById('themeIcon');
     const toggleIcon = document.getElementById('toggleIcon');
+    const topHeader = document.getElementById('topHeader');
+    const sectionProgress = document.getElementById('sectionProgress');
+    const commandPalette = document.getElementById('commandPalette');
+    const commandBackdrop = document.getElementById('commandPaletteBackdrop');
+    const commandInput = document.getElementById('commandInput');
+    const commandList = document.getElementById('commandList');
+    const heroCommandTrigger = document.getElementById('heroCommandTrigger');
+    const commandPaletteTriggerMobile = document.getElementById('commandPaletteTriggerMobile');
+    const activeSectionLabel = document.getElementById('activeSectionLabel');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
    // --- Brand Modal Logic ---
     const brandModal = document.getElementById('brandModal');
@@ -1168,6 +1739,13 @@
             window.closeBrandModal();
         }
     });
+
+    function updateHeaderState() {
+      if (!topHeader) return;
+      topHeader.classList.toggle('is-scrolled', window.scrollY > 10);
+    }
+    window.addEventListener('scroll', updateHeaderState, { passive: true });
+    updateHeaderState();
 
     // --- 1. PERSISTENCE LOGIC (Sidebar) ---
     const SIDEBAR_STATE_KEY = 'sidebarState';
@@ -1235,6 +1813,7 @@
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
       applyTheme(isDark);
+      scheduleTooltipInit(0);
     });
 
     // --- 3. MOBILE MENU ---
@@ -1251,10 +1830,225 @@
 
     // --- 4. NAVIGATION ---
     // Added "eventsStall" to this list so the app knows to hide/show it
-    const sections = ["home", "workLog", "dashboard", "recipeCalculator", "invoice", "payments", "orders", "eventsStall", "inventory", "clients", "fixedExpenses", "export"];
-    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = ["home", "workLog", "dashboard", "recipeCalculator", "invoice", "payments", "orders", "eventsStall", "inventory", "clients", "fixedExpenses", "admin", "export"];
+    const sectionMeta = {
+      home: { label: 'Home', icon: 'home' },
+      workLog: { label: 'Work Log', icon: 'edit-3' },
+      dashboard: { label: 'Dashboard', icon: 'pie-chart' },
+      recipeCalculator: { label: 'Recipe Calculator', icon: 'calculator' },
+      invoice: { label: 'Invoice', icon: 'file-text' },
+      payments: { label: 'Payments', icon: 'credit-card' },
+      orders: { label: 'Orders', icon: 'shopping-bag' },
+      eventsStall: { label: 'Events & Stalls', icon: 'map-pin' },
+      inventory: { label: 'Inventory', icon: 'package' },
+      clients: { label: 'Clients', icon: 'users' },
+      fixedExpenses: { label: 'Fixed Expenses', icon: 'database' },
+      admin: { label: 'Admin', icon: 'shield' },
+      export: { label: 'Export', icon: 'upload-cloud' }
+    };
+    const quickActions = [
+      { id: 'quick-dashboard', label: 'Open Dashboard', section: 'dashboard', icon: 'bar-chart-2' },
+      { id: 'quick-new-invoice', label: 'Create Invoice', section: 'invoice', icon: 'file-plus' },
+      { id: 'quick-payments', label: 'Record Payment', section: 'payments', icon: 'credit-card' },
+      { id: 'quick-inventory', label: 'Manage Inventory', section: 'inventory', icon: 'package' }
+    ];
+    const DEFAULT_SECTION = 'home';
+    const REFRESH_MODE_KEY = 'flowr:refreshMode';
+    const ROLE_FALLBACK_SECTION = 'home';
+    const getNavLinks = () => document.querySelectorAll('#sidebar .nav-link');
+    window.RolePortal?.snapshotDefaultSidebar?.();
 
-    function showSection(id) {
+    function persistRefreshIntent(mode) {
+      try {
+        sessionStorage.setItem(REFRESH_MODE_KEY, mode);
+      } catch (_) {}
+    }
+
+    function consumeRefreshIntent() {
+      try {
+        const mode = sessionStorage.getItem(REFRESH_MODE_KEY);
+        sessionStorage.removeItem(REFRESH_MODE_KEY);
+        return mode;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function syncSectionHash(id) {
+      if (!sections.includes(id)) return;
+      const nextHash = id === DEFAULT_SECTION ? '' : `#${id}`;
+      const nextUrl = `${window.location.pathname}${window.location.search}${nextHash}`;
+      window.history.replaceState(null, '', nextUrl);
+    }
+
+    function resolveInitialSection() {
+      const hardRefresh = consumeRefreshIntent() === 'hard';
+      if (hardRefresh) return DEFAULT_SECTION;
+
+      const hashSection = window.location.hash.substring(1);
+      if (sections.includes(hashSection)) return hashSection;
+
+      return DEFAULT_SECTION;
+    }
+
+    function updateSectionProgress(id) {
+      if (!sectionProgress) return;
+      const idx = sections.indexOf(id);
+      const pct = idx >= 0 ? ((idx + 1) / sections.length) * 100 : 0;
+      sectionProgress.style.width = `${Math.max(8, Math.min(100, pct))}%`;
+    }
+
+    function applyRoleGuards() {
+      const access = window.AccessControl;
+      if (!access?.canAccessSection) return;
+
+      getNavLinks().forEach(link => {
+        const href = link.getAttribute('href') || '';
+        const sectionId = href.startsWith('#') ? href.substring(1) : '';
+        const allowed = access.canAccessSection(sectionId);
+        link.style.display = allowed ? '' : 'none';
+      });
+
+      document.querySelectorAll('[data-quick-section]').forEach((btn) => {
+        const sectionId = btn.getAttribute('data-quick-section') || '';
+        const allowed = access.canAccessSection(sectionId);
+        btn.style.display = allowed ? '' : 'none';
+      });
+    }
+
+    function getSectionSkeletonMarkup(id) {
+      const wrappers = {
+        base: 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl',
+        card: 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl'
+      };
+
+      if (id === 'dashboard') {
+        return `
+          <div class="max-w-6xl mx-auto space-y-6 p-1">
+            <div class="${wrappers.base} p-6">
+              <div class="h-5 w-52 rounded-lg section-skeleton"></div>
+              <div class="mt-3 h-3 w-72 rounded-md section-skeleton"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="h-28 ${wrappers.card} p-4"><div class="h-3 w-24 rounded-md section-skeleton"></div><div class="mt-4 h-8 w-20 rounded-lg section-skeleton"></div></div>
+              <div class="h-28 ${wrappers.card} p-4"><div class="h-3 w-28 rounded-md section-skeleton"></div><div class="mt-4 h-8 w-24 rounded-lg section-skeleton"></div></div>
+              <div class="h-28 ${wrappers.card} p-4"><div class="h-3 w-20 rounded-md section-skeleton"></div><div class="mt-4 h-8 w-16 rounded-lg section-skeleton"></div></div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div class="${wrappers.base} p-5">
+                <div class="h-4 w-32 rounded-md section-skeleton"></div>
+                <div class="mt-5 h-56 rounded-xl section-skeleton"></div>
+              </div>
+              <div class="${wrappers.base} p-5">
+                <div class="h-4 w-36 rounded-md section-skeleton"></div>
+                <div class="mt-5 h-56 rounded-xl section-skeleton"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (id === 'payments' || id === 'orders') {
+        return `
+          <div class="max-w-6xl mx-auto space-y-6 p-1">
+            <div class="${wrappers.base} p-6">
+              <div class="h-5 w-44 rounded-lg section-skeleton"></div>
+              <div class="mt-3 h-3 w-64 rounded-md section-skeleton"></div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="h-24 ${wrappers.card} p-4"><div class="h-3 w-16 rounded-md section-skeleton"></div><div class="mt-3 h-7 w-20 rounded-lg section-skeleton"></div></div>
+              <div class="h-24 ${wrappers.card} p-4"><div class="h-3 w-20 rounded-md section-skeleton"></div><div class="mt-3 h-7 w-16 rounded-lg section-skeleton"></div></div>
+              <div class="h-24 ${wrappers.card} p-4"><div class="h-3 w-14 rounded-md section-skeleton"></div><div class="mt-3 h-7 w-24 rounded-lg section-skeleton"></div></div>
+              <div class="h-24 ${wrappers.card} p-4"><div class="h-3 w-24 rounded-md section-skeleton"></div><div class="mt-3 h-7 w-12 rounded-lg section-skeleton"></div></div>
+            </div>
+            <div class="${wrappers.base} p-5 space-y-3">
+              <div class="h-10 rounded-lg section-skeleton"></div>
+              <div class="h-10 rounded-lg section-skeleton"></div>
+              <div class="h-10 rounded-lg section-skeleton"></div>
+              <div class="h-10 rounded-lg section-skeleton"></div>
+              <div class="h-10 rounded-lg section-skeleton"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (id === 'clients') {
+        return `
+          <div class="max-w-6xl mx-auto space-y-6 p-1">
+            <div class="${wrappers.base} p-6">
+              <div class="h-5 w-40 rounded-lg section-skeleton"></div>
+              <div class="mt-3 h-3 w-72 rounded-md section-skeleton"></div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div class="${wrappers.card} p-5">
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full section-skeleton"></div>
+                  <div class="space-y-2 w-full">
+                    <div class="h-3 w-1/2 rounded-md section-skeleton"></div>
+                    <div class="h-3 w-2/3 rounded-md section-skeleton"></div>
+                  </div>
+                </div>
+                <div class="mt-5 h-3 w-full rounded-md section-skeleton"></div>
+                <div class="mt-2 h-3 w-[85%] rounded-md section-skeleton"></div>
+              </div>
+              <div class="${wrappers.card} p-5">
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full section-skeleton"></div>
+                  <div class="space-y-2 w-full">
+                    <div class="h-3 w-1/2 rounded-md section-skeleton"></div>
+                    <div class="h-3 w-2/3 rounded-md section-skeleton"></div>
+                  </div>
+                </div>
+                <div class="mt-5 h-3 w-full rounded-md section-skeleton"></div>
+                <div class="mt-2 h-3 w-[85%] rounded-md section-skeleton"></div>
+              </div>
+              <div class="${wrappers.card} p-5">
+                <div class="flex items-center gap-3">
+                  <div class="h-10 w-10 rounded-full section-skeleton"></div>
+                  <div class="space-y-2 w-full">
+                    <div class="h-3 w-1/2 rounded-md section-skeleton"></div>
+                    <div class="h-3 w-2/3 rounded-md section-skeleton"></div>
+                  </div>
+                </div>
+                <div class="mt-5 h-3 w-full rounded-md section-skeleton"></div>
+                <div class="mt-2 h-3 w-[85%] rounded-md section-skeleton"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="max-w-6xl mx-auto p-1">
+          <div class="${wrappers.base} p-6 space-y-3">
+            <div class="h-5 w-44 rounded-lg section-skeleton"></div>
+            <div class="h-3 w-72 rounded-md section-skeleton"></div>
+            <div class="h-40 rounded-xl section-skeleton mt-4"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setActiveSectionLabel(id) {
+      if (!activeSectionLabel) return;
+      const next = sectionMeta[id]?.label || 'Home';
+      if (activeSectionLabel.textContent === next) return;
+
+      activeSectionLabel.classList.add('is-swapping');
+      setTimeout(() => {
+        activeSectionLabel.textContent = next;
+        activeSectionLabel.classList.remove('is-swapping');
+      }, 140);
+    }
+
+    function showSection(id, options = {}) {
+      const shouldSyncHash = options.syncHash !== false;
+      const isAuthenticated = !!window.auth?.currentUser;
+      if (isAuthenticated && window.AccessControl?.canAccessSection && !window.AccessControl.canAccessSection(id)) {
+        if(window.notyf) window.notyf.error('You do not have access to this section.');
+        id = ROLE_FALLBACK_SECTION;
+      }
+
       // Reset scroll so each tab opens from the top instead of preserving the previous tab's scroll position.
       window.scrollTo({ top: 0, behavior: 'auto' });
 
@@ -1272,58 +2066,325 @@
           target.style.display = 'block';
           void target.offsetWidth;
           target.classList.add('show');
+
+          if (['dashboard', 'payments', 'orders', 'clients'].includes(id)) {
+            target.innerHTML = getSectionSkeletonMarkup(id);
+          }
           
           if (id === 'clients' && window.renderClientsSection) window.renderClientsSection();
+          if (id === 'admin' && window.AdminPortal?.render) window.AdminPortal.render();
           if (id === 'orders' && window.renderOrdersTable) window.renderOrdersTable();
           if (id === 'dashboard' && window.loadDashboard) window.loadDashboard();
           if (id === 'payments' && window.renderPaymentsTable) window.renderPaymentsTable();
         }
       }, 50);
 
-      navLinks.forEach(l => {
+      getNavLinks().forEach(l => {
         l.classList.remove('active');
+        l.removeAttribute('aria-current');
         l.classList.add('text-slate-600', 'dark:text-slate-400'); 
       });
       
       const activeLink = document.querySelector(`a[href="#${id}"]`);
       if(activeLink) {
         activeLink.classList.add('active');
+        activeLink.setAttribute('aria-current', 'page');
         activeLink.classList.remove('text-slate-600', 'dark:text-slate-400');
       }
+
+      setActiveSectionLabel(id);
+
+      if (shouldSyncHash) syncSectionHash(id);
+      updateSectionProgress(id);
       
       if(window.innerWidth < 768) closeSidebar();
     }
+    window.showSection = showSection;
 
-    navLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
+    function bindNavHandlers() {
+      const navContainer = document.querySelector('#sidebar nav');
+      if (!navContainer || navContainer.dataset.navBound === '1') return;
+
+      navContainer.dataset.navBound = '1';
+      navContainer.addEventListener('click', (e) => {
+        const link = e.target.closest('a.nav-link');
+        if (!link || !navContainer.contains(link)) return;
+
+        const href = link.getAttribute('href') || '';
+        if (!href.startsWith('#')) return;
+
         e.preventDefault();
-        const id = link.getAttribute('href').substring(1);
+        const id = href.substring(1);
         showSection(id);
       });
+    }
+
+    bindNavHandlers();
+
+    function initRevealEffects() {
+      const revealItems = document.querySelectorAll('[data-reveal]');
+      if (prefersReducedMotion) {
+        revealItems.forEach((el) => el.classList.add('is-revealed'));
+        return;
+      }
+
+      const revealObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-revealed');
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.2, rootMargin: '0px 0px -8% 0px' });
+
+      revealItems.forEach((el) => revealObserver.observe(el));
+    }
+
+    function initParallaxEffects() {
+      const blobs = document.querySelectorAll('[data-parallax]');
+      if (!blobs.length || prefersReducedMotion) return;
+
+      const updateParallax = () => {
+        const shift = Math.min(window.scrollY * 0.2, 90);
+        blobs.forEach((blob) => {
+          const depth = Number(blob.dataset.depth || 0.2);
+          blob.style.setProperty('--parallax-depth', depth.toString());
+          blob.style.setProperty('--parallax-shift', `${shift}px`);
+        });
+      };
+
+      window.addEventListener('scroll', updateParallax, { passive: true });
+      updateParallax();
+    }
+
+    function initMagneticButtons() {
+      if (prefersReducedMotion) return;
+      document.querySelectorAll('.magnetic-btn').forEach((btn) => {
+        btn.addEventListener('mousemove', (event) => {
+          const rect = btn.getBoundingClientRect();
+          const offsetX = event.clientX - (rect.left + rect.width / 2);
+          const offsetY = event.clientY - (rect.top + rect.height / 2);
+          btn.style.transform = `translate(${offsetX * 0.08}px, ${offsetY * 0.12}px)`;
+        });
+        btn.addEventListener('mouseleave', () => {
+          btn.style.transform = 'translate(0, 0)';
+        });
+      });
+    }
+
+    function initTopQuickActions() {
+      document.querySelectorAll('[data-quick-section]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const sectionId = btn.getAttribute('data-quick-section');
+          if (!sectionId) return;
+          showSection(sectionId);
+        });
+      });
+    }
+
+    const commandState = {
+      open: false,
+      items: [],
+      activeIndex: 0
+    };
+
+    function getAvailableCommandItems(query = '') {
+      const q = query.trim().toLowerCase();
+      const access = window.AccessControl;
+      const isAuthenticated = !!window.auth?.currentUser;
+      const canSeeSection = (section) => {
+        if (!isAuthenticated || !access?.canAccessSection) return true;
+        return access.canAccessSection(section);
+      };
+
+      const sectionItems = sections
+        .filter((section) => canSeeSection(section))
+        .map((section) => ({
+          type: 'section',
+          id: `section-${section}`,
+          section,
+          label: sectionMeta[section]?.label || section,
+          icon: sectionMeta[section]?.icon || 'arrow-right',
+          hint: 'Section'
+        }));
+
+      const actionItems = quickActions
+        .filter((item) => canSeeSection(item.section))
+        .map((item) => ({
+          type: 'action',
+          id: item.id,
+          section: item.section,
+          label: item.label,
+          icon: item.icon,
+          hint: 'Quick Action'
+        }));
+
+      const merged = [...actionItems, ...sectionItems];
+      if (!q) return merged;
+      return merged.filter((item) => item.label.toLowerCase().includes(q));
+    }
+
+    function renderCommandList(query = '') {
+      if (!commandList) return;
+      commandState.items = getAvailableCommandItems(query);
+      if (commandState.activeIndex > commandState.items.length - 1) commandState.activeIndex = 0;
+
+      if (!commandState.items.length) {
+        commandList.innerHTML = '<div class="px-3 py-6 text-sm text-slate-400 text-center">No matching actions found.</div>';
+        return;
+      }
+
+      commandList.innerHTML = commandState.items.map((item, idx) => `
+        <button type="button" data-command-index="${idx}" class="command-item w-full flex items-center justify-between gap-3 px-3 py-2 text-left rounded-xl border border-transparent ${idx === commandState.activeIndex ? 'active' : ''}">
+          <div class="flex items-center gap-3">
+            <i data-feather="${item.icon}" class="w-4 h-4 text-slate-400"></i>
+            <div>
+              <p class="text-sm font-semibold text-slate-700 dark:text-slate-100">${item.label}</p>
+              <p class="text-xs text-slate-400">${item.hint}</p>
+            </div>
+          </div>
+          <span class="text-[10px] uppercase tracking-wider text-slate-400">${item.type}</span>
+        </button>
+      `).join('');
+
+      commandList.querySelectorAll('[data-command-index]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-command-index'));
+          const selected = commandState.items[idx];
+          if (!selected) return;
+          closeCommandPalette();
+          showSection(selected.section);
+        });
+      });
+
+      feather.replace();
+    }
+
+    function openCommandPalette() {
+      if (!commandPalette || commandState.open) return;
+      commandState.open = true;
+      commandPalette.classList.remove('hidden');
+      renderCommandList('');
+      if (commandInput) {
+        commandInput.value = '';
+        commandInput.focus();
+      }
+    }
+
+    function closeCommandPalette() {
+      if (!commandPalette || !commandState.open) return;
+      commandState.open = false;
+      commandPalette.classList.add('hidden');
+    }
+
+    function moveCommandSelection(direction) {
+      if (!commandState.items.length) return;
+      commandState.activeIndex = (commandState.activeIndex + direction + commandState.items.length) % commandState.items.length;
+      renderCommandList(commandInput?.value || '');
+    }
+
+    heroCommandTrigger?.addEventListener('click', openCommandPalette);
+    commandPaletteTriggerMobile?.addEventListener('click', openCommandPalette);
+    commandBackdrop?.addEventListener('click', closeCommandPalette);
+    commandInput?.addEventListener('input', (e) => {
+      commandState.activeIndex = 0;
+      renderCommandList(e.target.value || '');
     });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r') {
+        persistRefreshIntent(e.shiftKey ? 'hard' : 'soft');
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (commandState.open) closeCommandPalette();
+        else openCommandPalette();
+        return;
+      }
+      if (!commandState.open) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCommandPalette();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveCommandSelection(1);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveCommandSelection(-1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selected = commandState.items[commandState.activeIndex];
+        if (!selected) return;
+        closeCommandPalette();
+        showSection(selected.section);
+      }
+    });
+
+    window.addEventListener('hashchange', () => {
+      const hashSection = window.location.hash.substring(1);
+      if (!sections.includes(hashSection)) return;
+      showSection(hashSection, { syncHash: false });
+    });
+
+    initRevealEffects();
+    initParallaxEffects();
+    initMagneticButtons();
+    initTopQuickActions();
 
     // --- 5. TIPPY.JS TOOLTIPS ---
 // Initialize Tippy instances variable to manage them later if needed
 let tooltipInstances = [];
+let tooltipInitTimer = null;
+let tooltipNavObserver = null;
+
+function scheduleTooltipInit(delay = 0) {
+  clearTimeout(tooltipInitTimer);
+  console.log('[tooltips] schedule init', {
+    delay,
+    collapsed: sidebar?.classList.contains('collapsed'),
+    dark: document.documentElement.classList.contains('dark')
+  });
+  tooltipInitTimer = setTimeout(initTooltips, delay);
+}
 
 function initTooltips() {
+  if (typeof tippy !== 'function') {
+    console.log('[tooltips] skipped: tippy unavailable');
+    return;
+  }
+
   // Destroy existing instances to avoid duplicates
   if (tooltipInstances.length > 0) {
+    console.log('[tooltips] destroying existing instances', tooltipInstances.length);
     tooltipInstances.forEach(instance => instance.destroy());
     tooltipInstances = [];
   }
 
   // Only enable tooltips if the sidebar is collapsed
   if (sidebar.classList.contains('collapsed')) {
-    tooltipInstances = tippy('.nav-link', {
+    const navLinks = document.querySelectorAll('.nav-link[data-tooltip]');
+    if (!navLinks.length) {
+      console.log('[tooltips] skipped: no nav links found');
+      return;
+    }
+
+    tooltipInstances = tippy(navLinks, {
       content: (reference) => reference.getAttribute('data-tooltip'),
       placement: 'right',      // Tooltip appears to the right of the icon
-      animation: 'scale',      // Smooth scale animation
-      theme: 'custom',         // We will define this theme in CSS below
+      animation: 'fade',       // Crisp appearance (no scale blur)
+      theme: 'flowr',
       arrow: true,
       delay: [100, 0],         // Slight delay before showing
       duration: [200, 100],    // Animation speed
+      zIndex: 9999
     });
+    console.log('[tooltips] initialized', {
+      instances: tooltipInstances.length,
+      dark: document.documentElement.classList.contains('dark')
+    });
+  } else {
+    console.log('[tooltips] skipped: sidebar expanded');
   }
 }
 
@@ -1331,19 +2392,31 @@ function initTooltips() {
 toggleBtn?.addEventListener('click', () => {
     // We rely on the existing event listener to toggle the class, 
     // but we need to update Tippy AFTER the class change.
-    setTimeout(initTooltips, 100); 
+    scheduleTooltipInit(120); 
 });
 
+function observeSidebarNavChanges() {
+  const navContainer = document.querySelector('#sidebar nav');
+  if (!navContainer || tooltipNavObserver) return;
+
+  tooltipNavObserver = new MutationObserver(() => {
+    scheduleTooltipInit(0);
+  });
+
+  tooltipNavObserver.observe(navContainer, { childList: true, subtree: true });
+}
+
 // Initialize on load
-initTooltips();
+observeSidebarNavChanges();
+scheduleTooltipInit(120);
+window.addEventListener('load', () => scheduleTooltipInit(0));
+window.addEventListener('pageshow', () => scheduleTooltipInit(0));
 
     // --- 6. GREETING & AUTH & SPLASH SCREEN LOGIC ---
     function updateGreeting(name) {
       const h = new Date().getHours();
       const greet = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
       const displayName = name ? name.split(' ')[0] : 'Chef';
-      
-      document.getElementById('greetingText').innerText = `${greet}, ${displayName}`;
 
       const heroGreeting = document.getElementById('heroGreeting');
       const heroName = document.getElementById('heroName');
@@ -1363,8 +2436,18 @@ initTooltips();
         };
 
         if(window.auth) {
-            window.auth.onAuthStateChanged(user => {
+            window.auth.onAuthStateChanged(async (user) => {
                 if(user) {
+                    const accessResult = await window.AccessControl?.handlePostLogin(user);
+                    if (accessResult && accessResult.allowed === false) {
+                        alert("Access denied: your account is not invited or is currently inactive. Please contact admin.");
+                        window.AccessControl?.clearSession?.();
+                        applyRoleGuards();
+                        await window.auth.signOut();
+                        setTimeout(removeLoader, 100);
+                        return;
+                    }
+
                     document.getElementById('signInPage').style.display = 'none';
                     document.getElementById('userInfo').classList.remove('hidden');
                     document.getElementById('userInfo').classList.add('flex');
@@ -1372,12 +2455,23 @@ initTooltips();
                     document.getElementById('userName').innerText = user.displayName;
                     document.getElementById('loginBtn').style.display = 'none';
                     updateGreeting(user.displayName);
+
+                    await window.RolePortal?.activate?.(user, accessResult);
+                    bindNavHandlers();
+                    applyRoleGuards();
+                    scheduleTooltipInit(0);
                     setTimeout(removeLoader, 500); // Slight delay for smoothness
                 } else {
+                    window.AccessControl?.clearSession?.();
+                    window.RolePortal?.resetToDefaultSidebar?.();
+                    window.RolePortal?.clearHeaderAffordances?.();
+                    bindNavHandlers();
                     document.getElementById('signInPage').style.display = 'block'; // Make sure the container is visible
                     document.getElementById('userInfo').classList.add('hidden');
                     document.getElementById('loginBtn').style.display = 'block';
                     updateGreeting();
+                    applyRoleGuards();
+                    scheduleTooltipInit(0);
                     removeLoader(); // Immediate removal to show login
                 }
             });
@@ -1385,12 +2479,8 @@ initTooltips();
             removeLoader();
         }
         
-        const hash = window.location.hash.substring(1);
-        if(hash && sections.includes(hash)) {
-            showSection(hash);
-        } else {
-            showSection('home');
-        }
+        const initialSection = resolveInitialSection();
+        showSection(initialSection);
     });
 
     document.getElementById('signInGoogleBtn')?.addEventListener('click', () => window.auth?.signInWithPopup(window.googleProvider));

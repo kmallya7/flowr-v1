@@ -45,6 +45,38 @@ Flowr is the production command center for Lush Patisserie. It brings together d
 - Clean, mobile-friendly interface focused on speed.
 - Dark Mode: Toggle in profile settings.
 - Profile and Sign Out for secure session management.
+- Role-aware navigation and section guards for `owner`, `admin`, `staff`, and `client`.
+
+## Access and Invites (Phase 2)
+
+- Admin People workspace supports inviting clients/staff and lifecycle tracking.
+- Invite email requests are written in Firebase `firestore-send-email` format to `mail` (or custom extension collection).
+- Access records are stored in `accessUsers`.
+- Backend artifacts:
+  - `docs/email-worker-contract.md`
+  - `functions/index.example.js`
+  - `docs/firestore-rules-phase2.md`
+
+## Role Portals (Phase 3)
+
+- Dedicated role modes now exist:
+  - `owner/admin`: full management workspace
+  - `staff`: staff-focused workspace
+  - `client`: client-facing portal
+- Sidebar and section access are role-aware at runtime.
+
+## Phase 3.1 Enhancements
+
+- Staff workspace now includes embedded operational tables (orders queue, inventory, recent work logs).
+- Header includes role badge and quick-action shortcuts by role.
+- Admin People includes inline role editing and a compact permission matrix.
+
+## Phase 4 Hardening
+
+- Access doc normalization + schema backfill path (`schemaVersion: 2`).
+- Safer auth fallback (`access-check-failed` denies access instead of fail-open).
+- Migration template: `scripts/migrate-access-users.example.js`.
+- Release checklist: `docs/phase4-hardening-checklist.md`.
 
 ## Version
 

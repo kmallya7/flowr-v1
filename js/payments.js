@@ -707,7 +707,7 @@ function renderBalancesTable() {
         `;
       } else {
         actionHtml = `
-            <button onclick="openPaymentModal('${c.id}', ${c.previousDue}, ${c.totalPending}, event)" class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 hover:text-indigo-800 dark:hover:text-indigo-200 px-4 py-2 rounded-lg text-xs font-bold transition border border-indigo-200 dark:border-indigo-800 shadow-sm">
+            <button onclick="openPaymentModal('${c.id}', ${c.previousDue}, ${c.totalPending}, event)" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold transition border border-blue-500 shadow-sm">
               Pay
             </button>
         `;

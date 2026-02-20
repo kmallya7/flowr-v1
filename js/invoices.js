@@ -280,6 +280,40 @@ document.addEventListener("DOMContentLoaded", () => {
       font-family: 'Whisper', cursive;
       font-weight: 400;
     }
+
+    /* Keep invoice paper readable in dark mode (paper stays light). */
+    html.dark #actualInvoicePaper {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+    }
+    html.dark #actualInvoicePaper .bg-slate-50 {
+      background-color: #f8fafc !important;
+    }
+    html.dark #actualInvoicePaper .bg-slate-100 {
+      background-color: #f1f5f9 !important;
+    }
+    html.dark #actualInvoicePaper .border-slate-200 {
+      border-color: #cbd5e1 !important;
+    }
+    html.dark #actualInvoicePaper .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+      border-color: #e2e8f0 !important;
+    }
+    html.dark #actualInvoicePaper .text-slate-900 { color: #0f172a !important; }
+    html.dark #actualInvoicePaper .text-slate-800 { color: #1f2937 !important; }
+    html.dark #actualInvoicePaper .text-slate-700 { color: #334155 !important; }
+    html.dark #actualInvoicePaper .text-slate-600 { color: #475569 !important; }
+    html.dark #actualInvoicePaper .text-slate-500 { color: #64748b !important; }
+    html.dark #actualInvoicePaper .text-slate-400 { color: #94a3b8 !important; }
+    html.dark #actualInvoicePaper input,
+    html.dark #actualInvoicePaper textarea {
+      color: #0f172a !important;
+      -webkit-text-fill-color: #0f172a !important;
+    }
+    html.dark #actualInvoicePaper input::placeholder,
+    html.dark #actualInvoicePaper textarea::placeholder {
+      color: #94a3b8 !important;
+    }
     
     /* UI HELPER STYLES */
     .autocomplete-dropdown {
@@ -305,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. ADD/REMOVE INVOICE ITEMS
   // ---------------------------
   const db = firebase.firestore();
+  let currentClientProfile = null;
 
   // Loader Helper
   function showLoading(show = true) {
@@ -326,6 +361,36 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${dayStr}-${monthStr}-${dt.getFullYear()}`;
   }
 
+  function escapeRegex(input = "") {
+    return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function parseInvoiceSequence(invoiceNumber, prefix) {
+    const normalizedPrefix = (prefix || "").trim();
+    const normalizedInvoice = (invoiceNumber || "").trim();
+    if (!normalizedPrefix || !normalizedInvoice) return null;
+    const pattern = new RegExp(`^${escapeRegex(normalizedPrefix)}[- ]?(\\d+)$`, "i");
+    const match = normalizedInvoice.match(pattern);
+    if (!match) return null;
+    const seq = parseInt(match[1], 10);
+    return Number.isFinite(seq) && seq > 0 ? seq : null;
+  }
+
+  function buildInvoiceNumber(prefix, sequence) {
+    const normalizedPrefix = (prefix || "").trim();
+    const normalizedSeq = Number(sequence) || 1;
+    if (!normalizedPrefix) return "";
+    return `${normalizedPrefix}-${Math.max(1, normalizedSeq)}`;
+  }
+
+  async function fetchClientProfileByName(clientName) {
+    const name = (clientName || "").trim();
+    if (!name) return null;
+    const clientSnap = await db.collection("clients").where("name", "==", name).limit(1).get();
+    if (clientSnap.empty) return null;
+    return { id: clientSnap.docs[0].id, ...clientSnap.docs[0].data() };
+  }
+
   // --- HELPER: INCREMENT INVOICE NUMBER ---
   // Handles logic like LP-60 -> LP-61
   function incrementInvoiceNumber(lastInvoiceNo) {
@@ -344,8 +409,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- HELPER: ASYNC FETCH NEXT NUMBER ---
   // Shared logic for both Manual Typing and Auto-Prefill
-  async function fetchNextInvoiceNumForClient(clientName) {
+  async function fetchNextInvoiceNumForClient(clientName, clientDoc = null) {
     try {
+      let resolvedClient = clientDoc;
+      if (!resolvedClient) {
+        resolvedClient = await fetchClientProfileByName(clientName);
+      }
+
+      const configuredPrefix = (resolvedClient?.invoicePrefix || "").trim();
+      if (configuredPrefix) {
+        const nextSeq = Number(resolvedClient.invoiceNextSequence) || 1;
+        return buildInvoiceNumber(configuredPrefix, nextSeq);
+      }
+
       const invoiceSnap = await db.collection("invoices")
         .where("client.name", "==", clientName)
         .orderBy("createdAt", "desc")
@@ -368,16 +444,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function bumpClientInvoiceSequence(clientDoc, usedInvoiceNumber) {
+    if (!clientDoc?.id) return;
+    const prefix = (clientDoc.invoicePrefix || "").trim();
+    if (!prefix) return;
+
+    const usedSeq = parseInvoiceSequence(usedInvoiceNumber, prefix);
+    if (!usedSeq) return;
+
+    const clientRef = db.collection("clients").doc(clientDoc.id);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(clientRef);
+      if (!snap.exists) return;
+      const data = snap.data() || {};
+      const currentNext = Number(data.invoiceNextSequence) || 1;
+      const targetNext = Math.max(currentNext, usedSeq + 1);
+      if (targetNext !== currentNext) {
+        tx.update(clientRef, { invoiceNextSequence: targetNext });
+      }
+    });
+  }
+
   // --- CLIENT AUTOFILL & AUTO-NUMBER LOGIC ---
   document.getElementById("clientName").addEventListener("blur", async function() {
     const clientName = this.value.trim();
-    if (!clientName) return;
+    if (!clientName) {
+      currentClientProfile = null;
+      return;
+    }
 
-    // 1. Autofill Address/Phone (Existing Logic)
+    // 1. Autofill Address/Phone/Email
     try {
-      const clientSnap = await db.collection("clients").where("name", "==", clientName).limit(1).get();
-      if (!clientSnap.empty) {
-        const clientDoc = clientSnap.docs[0].data();
+      const clientDoc = await fetchClientProfileByName(clientName);
+      currentClientProfile = clientDoc;
+      if (clientDoc) {
         document.getElementById("clientAddress").value = clientDoc.address || "";
         document.getElementById("clientPhone").value = clientDoc.phone || "";
         document.getElementById("clientEmail").value = clientDoc.email || "";
@@ -388,7 +488,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Only fill if the box is currently empty to avoid overwriting user manual input
     const currentInvVal = document.getElementById("invoiceNumber").value;
     if(!currentInvVal) {
-        const nextNum = await fetchNextInvoiceNumForClient(clientName);
+        const nextNum = await fetchNextInvoiceNumForClient(clientName, currentClientProfile);
         if(nextNum) document.getElementById("invoiceNumber").value = nextNum;
     }
   });
@@ -463,7 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // 4. SAVE INVOICE (UPDATED: SMART LINKING)
   // ----------------------------------------
-  document.addEventListener("click", function(e) {
+  document.addEventListener("click", async function(e) {
     if (e.target && e.target.closest("#saveInvoiceBtn")) {
       const btn = document.getElementById("saveInvoiceBtn");
       const originalText = btn.innerHTML;
@@ -478,11 +578,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const invoiceNumString = document.getElementById("invoiceNumber").value.trim();
       const clientName = document.getElementById("clientName").value.trim();
       const invoiceDate = document.getElementById("invoiceDate").value;
+      const resolvedClientProfile = currentClientProfile?.name === clientName
+        ? currentClientProfile
+        : await fetchClientProfileByName(clientName);
 
       const invoiceData = {
         invoiceNumber: invoiceNumString,
         invoiceDate: invoiceDate,
         dueDate: document.getElementById("dueDate").value,
+        clientId: resolvedClientProfile?.id || null,
         client: {
           name: clientName,
           address: document.getElementById("clientAddress").value.trim(),
@@ -550,6 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             window.currentDailyLogIdForInvoice = null; // Clear global state
           }
+          await bumpClientInvoiceSequence(resolvedClientProfile, invoiceNumString);
           // ---------------------------
           
           loadAllInvoices();
@@ -638,18 +743,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const invoicesList = document.getElementById("invoicesList");
     if (!invoicesList) return;
     if (!invoicesList.dataset.animReady) {
-      invoicesList.style.transition = "opacity 220ms ease, transform 220ms ease";
+      invoicesList.style.transition = "opacity 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 240ms cubic-bezier(0.16, 1, 0.3, 1)";
+      invoicesList.style.transformOrigin = "center center";
       invoicesList.dataset.animReady = "1";
     }
     if (loading) {
       invoicesList.dataset.loading = "1";
       invoicesList.style.opacity = "0.45";
-      invoicesList.style.transform = "translateY(4px)";
+      invoicesList.style.transform = "scale(0.985)";
       invoicesList.style.pointerEvents = "none";
     } else {
       invoicesList.dataset.loading = "0";
       invoicesList.style.opacity = "1";
-      invoicesList.style.transform = "translateY(0)";
+      invoicesList.style.transform = "scale(1)";
       invoicesList.style.pointerEvents = "auto";
     }
   }
@@ -745,7 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const shouldAnimateIn = invoicesList.dataset.loading === "1";
     if (shouldAnimateIn) {
       invoicesList.style.opacity = "0";
-      invoicesList.style.transform = "translateY(8px)";
+      invoicesList.style.transform = "scale(0.975)";
     }
 
     invoicesList.innerHTML = html;
@@ -1005,6 +1111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     itemsBody.innerHTML = "";
     addRow();
     window.currentDailyLogIdForInvoice = null;
+    currentClientProfile = null;
   }
   
   document.getElementById("newInvoiceBtn")?.addEventListener("click", resetInvoiceForm);
@@ -1034,6 +1141,7 @@ document.addEventListener("DOMContentLoaded", () => {
   clientNameInput.parentNode.style.position = "relative";
 
   clientNameInput.addEventListener("input", function() {
+    currentClientProfile = null;
     const val = this.value.trim().toLowerCase();
     if (!val) { dropdown.style.display = "none"; return; }
     
@@ -1058,6 +1166,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const client = allClients.find(c => c.id === item.dataset.id);
           if(client) {
               clientNameInput.value = client.name;
+              currentClientProfile = client;
               document.getElementById("clientAddress").value = client.address || "";
               document.getElementById("clientPhone").value = client.phone || "";
               // trigger blur to fetch last invoice

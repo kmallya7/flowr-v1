@@ -134,6 +134,16 @@ window.renderClientsSection = function() {
             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Address</label>
             <input type="text" id="client-address" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition" placeholder="Full address" />
           </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Invoice Prefix</label>
+            <input type="text" id="client-invoice-prefix" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition font-semibold" placeholder="e.g. LP" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Next Invoice #</label>
+            <input type="number" id="client-invoice-next-seq" min="1" step="1" value="1" class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition font-semibold" />
+          </div>
           
           <div>
             <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Status</label>
@@ -194,6 +204,7 @@ window.renderClientsSection = function() {
     formTitle.textContent = "Add Client";
     submitLabel.textContent = "Add Client";
     document.getElementById("client-status").value = "Active";
+    document.getElementById("client-invoice-next-seq").value = "1";
   });
 
   addProspectBtn.addEventListener("click", () => {
@@ -204,6 +215,7 @@ window.renderClientsSection = function() {
     formTitle.textContent = "Add Prospect";
     submitLabel.textContent = "Add Prospect";
     document.getElementById("client-status").value = "Prospect";
+    document.getElementById("client-invoice-next-seq").value = "1";
   });
 
   const closeOverlay = () => {
@@ -228,6 +240,9 @@ window.renderClientsSection = function() {
     const address = document.getElementById("client-address").value.trim();
     const status = document.getElementById("client-status").value;
     const notes = document.getElementById("client-notes").value.trim();
+    const invoicePrefix = document.getElementById("client-invoice-prefix").value.trim();
+    const nextSeqRaw = parseInt(document.getElementById("client-invoice-next-seq").value, 10);
+    const invoiceNextSequence = Number.isFinite(nextSeqRaw) && nextSeqRaw > 0 ? nextSeqRaw : 1;
 
     if (!name) {
       showToast("Client name is required.", "error");
@@ -236,10 +251,17 @@ window.renderClientsSection = function() {
 
     try {
         if (editingClientId) {
-          await db.collection("clients").doc(editingClientId).update({ name, contactPerson, phone, address, status, notes });
+          await db.collection("clients").doc(editingClientId).update({
+            name, contactPerson, phone, address, status, notes,
+            invoicePrefix, invoiceNextSequence
+          });
           showToast("Client updated!", "success");
         } else {
-          await db.collection("clients").add({ name, contactPerson, phone, address, status, notes, createdAt: new Date() });
+          await db.collection("clients").add({
+            name, contactPerson, phone, address, status, notes,
+            invoicePrefix, invoiceNextSequence,
+            createdAt: new Date()
+          });
           showToast("Client added!", "success");
         }
     
@@ -371,6 +393,7 @@ window.renderClientsSection = function() {
               <td class="p-4">
                 <div class="font-bold text-slate-800 dark:text-white">${c.name}</div>
                 <div class="text-xs text-slate-400 mt-0.5">${c.address || ''}</div>
+                ${(c.invoicePrefix || "").trim() ? `<div class="text-[11px] text-blue-600 dark:text-blue-400 mt-1 font-semibold">Invoice: ${c.invoicePrefix}-${c.invoiceNextSequence || 1} next</div>` : ""}
               </td>
               <td class="p-4">${c.contactPerson || '-'}</td>
               <td class="p-4 font-mono text-blue-600 dark:text-blue-400">${c.phone || '-'}</td>
@@ -380,25 +403,25 @@ window.renderClientsSection = function() {
                 </span>
               </td>
               <td class="p-4 text-right">
-                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button class="edit-btn p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition" 
+                <div class="flex items-center justify-end gap-2">
+                  <button class="edit-btn p-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition" 
                     data-id="${c.id}"
                     data-client='${JSON.stringify(c).replace(/'/g, "&#39;")}'>
                     <i data-feather="edit-2" class="w-4 h-4"></i>
                   </button>
                   
                   ${isPipeline ? `
-                  <button class="convert-btn p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition" 
+                  <button class="convert-btn p-2 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded-lg transition" 
                     data-id="${c.id}" title="Convert">
                     <i data-feather="check" class="w-4 h-4"></i>
                   </button>
-                  <button class="lost-btn p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition" 
+                  <button class="lost-btn p-2 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition" 
                     data-id="${c.id}" title="Mark Lost">
                     <i data-feather="x-circle" class="w-4 h-4"></i>
                   </button>
                   ` : ''}
 
-                  <button class="delete-btn p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition" 
+                  <button class="delete-btn p-2 text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition" 
                     data-id="${c.id}">
                     <i data-feather="trash-2" class="w-4 h-4"></i>
                   </button>
@@ -412,10 +435,10 @@ window.renderClientsSection = function() {
   }
 
   function getStatusBadge(status) {
-      if(status === 'Active') return 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
-      if(status === 'Prospect') return 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
-      if(status === 'Lost') return 'bg-red-50 text-red-700 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
-      return 'bg-slate-100 text-slate-600 border-slate-200';
+      if(status === 'Active') return 'tone-success';
+      if(status === 'Prospect') return 'tone-warning';
+      if(status === 'Lost') return 'tone-danger';
+      return 'tone-neutral';
   }
 
   function bindActionButtons() {
@@ -447,6 +470,8 @@ window.renderClientsSection = function() {
     document.getElementById("client-address").value = c.address || '';
     document.getElementById("client-status").value = c.status || "Active";
     document.getElementById("client-notes").value = c.notes || "";
+    document.getElementById("client-invoice-prefix").value = c.invoicePrefix || "";
+    document.getElementById("client-invoice-next-seq").value = c.invoiceNextSequence || 1;
     
     formTitle.textContent = "Edit Client";
     submitLabel.textContent = "Update Client";

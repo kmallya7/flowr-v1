@@ -131,11 +131,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       orders.sort((a, b) => b.date.localeCompare(a.date)).forEach((order) => {
         // Status Badge Logic
-        let badgeColor = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
-        if (order.status === "Received") badgeColor = "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800";
-        if (order.status === "Baked") badgeColor = "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800";
-        if (order.status === "Delivered") badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800";
-        if (order.status === "Cancelled") badgeColor = "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800";
+        let badgeColor = "tone-neutral";
+        if (order.status === "Received") badgeColor = "tone-accent";
+        if (order.status === "Baked") badgeColor = "tone-warning";
+        if (order.status === "Delivered") badgeColor = "tone-success";
+        if (order.status === "Cancelled") badgeColor = "tone-danger";
 
         tableRows += `
           <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b border-slate-100 dark:border-slate-800 last:border-0 group">
