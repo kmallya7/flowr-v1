@@ -2,6 +2,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   const db = window.db;
+  const auth = window.auth;
   let editingId = null;
   let chartInstance = null;
 
@@ -260,6 +261,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function getNotes() { return document.getElementById("inv-notes").value.trim(); }
   function getDate() { return document.getElementById("inv-date").value; }
 
+  function resetInventoryViewForSignedOut() {
+    document.getElementById("inventory-list").innerHTML = "";
+    document.getElementById("used-products-list").innerHTML = "";
+    document.getElementById("inv-total-items").innerText = "0";
+    document.getElementById("inv-value").innerText = formatCurrency.format(0);
+    document.getElementById("inv-low-stock").innerText = "0";
+    document.getElementById("table-count-badge").innerText = "0";
+    document.getElementById("total-money-spent").innerText = formatCurrency.format(0);
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
+    }
+  }
+
   // Validation
   function validateForm() {
     let valid = true;
@@ -394,6 +409,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Main Render Function
   async function renderInventory() {
+    if (!auth?.currentUser) {
+      resetInventoryViewForSignedOut();
+      showLoading(false);
+      return;
+    }
+
     showLoading(true);
     const search = document.getElementById("search-inv").value.trim().toLowerCase();
     
@@ -645,5 +666,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Initial load
-  renderInventory();
+  if (auth?.onAuthStateChanged) {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        renderInventory();
+      } else {
+        resetInventoryViewForSignedOut();
+      }
+    });
+  } else {
+    renderInventory();
+  }
 });

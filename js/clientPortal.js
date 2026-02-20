@@ -18,10 +18,22 @@ function normalizeEmail(email) {
 
 async function queueInviteEmail(payload) {
   const db = getDb();
-  if (!db) return;
-
   const to = String(payload?.to || '').trim();
-  if (!to) return;
+  if (!to) return { method: 'none', sent: false };
+
+  try {
+    if (window.sendInviteActivationLink) {
+      await window.sendInviteActivationLink({
+        email: to,
+        role: payload?.role || ''
+      });
+      return { method: 'firebase-email-link', sent: true };
+    }
+  } catch (err) {
+    console.warn('Email-link invite send failed, falling back to extension queue:', err);
+  }
+
+  if (!db) return { method: 'none', sent: false };
 
   const recipientName = payload?.fullName || 'there';
   const roleLabel = String(payload?.role || 'user').toUpperCase();
@@ -67,6 +79,8 @@ async function queueInviteEmail(payload) {
       requestedAt: new Date()
     }
   });
+
+  return { method: 'extension-queue', sent: true };
 }
 
 export const AccessControl = {
@@ -160,6 +174,9 @@ export const AccessControl = {
       if (!accessDoc.exists) {
         const hasAnyAccess = await db.collection('accessUsers').limit(1).get();
         if (hasAnyAccess.empty) {
+          const providerIds = Array.isArray(user.providerData) ? user.providerData.map((p) => p?.providerId).filter(Boolean) : [];
+          const loginProvider = providerIds.includes('google.com') ? 'google' : 'email_link';
+
           await accessRef.set({
             email: user.email,
             emailLower,
@@ -170,7 +187,7 @@ export const AccessControl = {
             invitedAt: new Date(),
             acceptedAt: new Date(),
             lastLoginAt: new Date(),
-            loginProvider: 'google',
+            loginProvider,
             createdAt: new Date()
           }, { merge: true });
 
@@ -204,8 +221,10 @@ export const AccessControl = {
       }
 
       const patch = {
+        loginProvider: (Array.isArray(user.providerData) && user.providerData.some((provider) => provider?.providerId === 'google.com'))
+          ? 'google'
+          : 'email_link',
         lastLoginAt: new Date(),
-        loginProvider: 'google',
         name: data.name || user.displayName || user.email,
         role: normalized.role,
         status: normalized.status,
@@ -258,13 +277,71 @@ export const AccessControl = {
 export const AdminPortal = {
   state: {
     tab: 'client',
-    search: ''
+    search: '',
+    appearanceListenerBound: false,
+    appearance: {
+      themeId: 'midnight-teal',
+      accent: '#1B4F55',
+      intensity: 56
+    }
+  },
+
+  getAppearancePayload() {
+    const presetPayload = window.FlowrTheme?.getPresets?.() || { themes: [], accents: [] };
+    const statePayload = window.FlowrTheme?.getState?.() || this.state.appearance;
+    const intensity = Number(statePayload.intensity);
+
+    this.state.appearance = {
+      themeId: statePayload.themeId || 'midnight-teal',
+      accent: (statePayload.accent || '#1B4F55').toUpperCase(),
+      intensity: Number.isFinite(intensity) ? Math.max(10, Math.min(100, intensity)) : 56
+    };
+
+    return {
+      themes: presetPayload.themes || [],
+      accents: presetPayload.accents || [],
+      state: this.state.appearance
+    };
+  },
+
+  themeOptionsHTML(payload) {
+    const themes = payload.themes || [];
+    const selectedTheme = payload.state?.themeId;
+    return themes.map((theme) => {
+      const isActive = theme.id === selectedTheme;
+      const swatches = Array.isArray(theme.swatches) ? theme.swatches.slice(0, 4) : [];
+      return `
+        <button type="button" class="appearance-option admin-theme-option w-full text-left p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800" data-theme-id="${theme.id}" data-selected="${isActive ? 'true' : 'false'}">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">${theme.name}</span>
+          </div>
+          <div class="mt-3 grid grid-cols-4 gap-2">
+            ${swatches.map((hex) => `<span class="h-8 rounded-lg border border-slate-200/70 dark:border-slate-700/70" style="background:${hex};"></span>`).join('')}
+          </div>
+        </button>
+      `;
+    }).join('');
+  },
+
+  accentOptionsHTML(payload) {
+    const accents = payload.accents || [];
+    const selected = payload.state?.accent;
+    return accents.map((accent) => {
+      const hex = String(accent.hex || '').toUpperCase();
+      const isActive = hex === selected;
+      return `
+        <button type="button" class="appearance-option w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 transition-transform hover:scale-105" data-accent="${hex}" data-selected="${isActive ? 'true' : 'false'}" title="${accent.name}">
+          <span class="appearance-swatch block mx-auto mt-[7px]" style="background:${hex};"></span>
+        </button>
+      `;
+    }).join('');
   },
 
   render() {
     const host = document.getElementById('admin');
     if (!host) return;
     const role = window.AccessControl?.getRole?.() || 'guest';
+    const appearancePayload = this.getAppearancePayload();
 
     if (!['owner', 'admin'].includes(role)) {
       host.innerHTML = `
@@ -311,25 +388,57 @@ export const AdminPortal = {
 
         <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div class="p-4 border-b border-slate-100 dark:border-slate-800">
-            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Permission Matrix</h3>
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Invite History</h3>
+            <p class="text-xs text-slate-500 mt-1">All invite records, including removed/revoked users.</p>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
-                <tr>
-                  <th class="p-3 text-left">Capability</th>
-                  <th class="p-3 text-center">Owner/Admin</th>
-                  <th class="p-3 text-center">Staff</th>
-                  <th class="p-3 text-center">Client</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
-                <tr><td class="p-3">Manage invites/roles</td><td class="p-3 text-center">Yes</td><td class="p-3 text-center">No</td><td class="p-3 text-center">No</td></tr>
-                <tr><td class="p-3">Orders access</td><td class="p-3 text-center">Full</td><td class="p-3 text-center">Full</td><td class="p-3 text-center">Own</td></tr>
-                <tr><td class="p-3">Inventory access</td><td class="p-3 text-center">Full</td><td class="p-3 text-center">View/Edit</td><td class="p-3 text-center">No</td></tr>
-                <tr><td class="p-3">Invoices & payments</td><td class="p-3 text-center">Full</td><td class="p-3 text-center">Operational</td><td class="p-3 text-center">Own</td></tr>
-              </tbody>
-            </table>
+          <div id="admin-invite-history" class="overflow-x-auto"></div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Theme & Accent</h3>
+            <p class="text-xs text-slate-500 mt-1">Modern appearance controls with palette presets and accent intensity.</p>
+          </div>
+          <div class="p-4 space-y-5">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Theme Presets</p>
+              <div id="admin-theme-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                ${this.themeOptionsHTML(appearancePayload)}
+              </div>
+            </div>
+
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Accent Color</p>
+              <div id="admin-accent-grid" class="flex items-center flex-wrap gap-2">
+                ${this.accentOptionsHTML(appearancePayload)}
+              </div>
+            </div>
+
+            <div>
+              <div class="w-full md:max-w-xl">
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Accent Intensity</p>
+                  <span id="admin-intensity-label" class="text-[11px] font-bold px-2 py-1 rounded-full border tone-accent">${appearancePayload.state.intensity}%</span>
+                </div>
+                <input id="admin-accent-intensity" type="range" min="10" max="100" step="1" value="${appearancePayload.state.intensity}" class="appearance-range w-full cursor-pointer" />
+                <div class="mt-1 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Soft</span>
+                  <span>Bold</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div class="p-4 border-b border-slate-100 dark:border-slate-800">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Roles & Permissions</h3>
+          </div>
+          <div class="p-5">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4">
+              <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">Coming soon</p>
+              <p class="text-xs text-slate-500 mt-1">Granular roles and permissions matrix will be reintroduced in a future release.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -375,6 +484,7 @@ export const AdminPortal = {
 
     this.bindEvents();
     this.setTab(this.state.tab);
+    this.syncAppearanceUI();
     if (window.feather) window.feather.replace();
   },
 
@@ -386,6 +496,9 @@ export const AdminPortal = {
     const closeBtn = document.getElementById('admin-invite-close');
     const overlay = document.getElementById('admin-invite-overlay');
     const form = document.getElementById('admin-invite-form');
+    const themeGrid = document.getElementById('admin-theme-grid');
+    const accentGrid = document.getElementById('admin-accent-grid');
+    const intensityInput = document.getElementById('admin-accent-intensity');
 
     addClient?.addEventListener('click', () => this.openInviteModal('client'));
     addStaff?.addEventListener('click', () => this.openInviteModal('staff'));
@@ -405,6 +518,30 @@ export const AdminPortal = {
     });
 
     form?.addEventListener('submit', (e) => this.handleInviteSubmit(e));
+
+    themeGrid?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-theme-id]');
+      if (!btn) return;
+      const themeId = btn.getAttribute('data-theme-id');
+      if (!themeId) return;
+      window.FlowrTheme?.setTheme?.(themeId);
+      this.syncAppearanceUI();
+    });
+
+    accentGrid?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-accent]');
+      if (!btn) return;
+      const accent = btn.getAttribute('data-accent');
+      if (!accent) return;
+      window.FlowrTheme?.setAccent?.(accent);
+      this.syncAppearanceUI();
+    });
+
+    intensityInput?.addEventListener('input', (e) => {
+      const value = Number(e.target.value);
+      window.FlowrTheme?.setIntensity?.(value);
+      this.syncAppearanceUI();
+    });
 
     document.getElementById('admin-people-list')?.addEventListener('click', async (e) => {
       const actionBtn = e.target.closest('button[data-action]');
@@ -435,7 +572,7 @@ export const AdminPortal = {
             inviteStatus: 'invited'
           });
 
-          showToast('Invite resent.');
+          showToast('Activation invite resent.');
         }
 
         if (action === 'suspend') {
@@ -446,6 +583,23 @@ export const AdminPortal = {
         if (action === 'activate') {
           await accessRef.set({ status: 'active' }, { merge: true });
           showToast('Access activated.');
+        }
+
+        if (action === 'remove') {
+          const confirmed = window.confirm('Remove this user from People Access? This revokes their login access.');
+          if (!confirmed) return;
+
+          const actor = window.auth?.currentUser;
+          await accessRef.set({
+            status: 'suspended',
+            inviteStatus: 'revoked',
+            removedAt: new Date(),
+            removedByUid: actor?.uid || null,
+            removedByName: actor?.displayName || actor?.email || 'Admin',
+            updatedAt: new Date()
+          }, { merge: true });
+
+          showToast('User removed. Access revoked.');
         }
 
         await this.loadPeople();
@@ -477,6 +631,37 @@ export const AdminPortal = {
         showToast('Failed to update role.', 'error');
       }
     });
+
+    if (!this.state.appearanceListenerBound) {
+      window.addEventListener('flowr:appearance-change', () => this.syncAppearanceUI());
+      this.state.appearanceListenerBound = true;
+    }
+  },
+
+  syncAppearanceUI() {
+    const payload = this.getAppearancePayload();
+    const selectedTheme = payload.state.themeId;
+    const selectedAccent = payload.state.accent;
+    const selectedIntensity = payload.state.intensity;
+
+    document.querySelectorAll('#admin-theme-grid [data-theme-id]').forEach((el) => {
+      const active = el.getAttribute('data-theme-id') === selectedTheme;
+      el.setAttribute('data-selected', active ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('#admin-accent-grid [data-accent]').forEach((el) => {
+      const active = String(el.getAttribute('data-accent') || '').toUpperCase() === selectedAccent;
+      el.setAttribute('data-selected', active ? 'true' : 'false');
+    });
+
+    const intensityInput = document.getElementById('admin-accent-intensity');
+    const intensityLabel = document.getElementById('admin-intensity-label');
+    if (intensityInput) {
+      intensityInput.value = String(selectedIntensity);
+      const fillPct = ((selectedIntensity - 10) / 90) * 100;
+      intensityInput.style.setProperty('--appearance-range-fill', `${Math.max(0, Math.min(100, fillPct))}%`);
+    }
+    if (intensityLabel) intensityLabel.textContent = `${selectedIntensity}%`;
   },
 
   setTab(tab) {
@@ -603,7 +788,7 @@ export const AdminPortal = {
 
       this.closeInviteModal();
       await this.loadPeople();
-      showToast('Invite created and email queued.');
+      showToast('Invite created and activation email sent.');
     } catch (err) {
       console.error(err);
       showToast('Failed to create invite.', 'error');
@@ -614,23 +799,47 @@ export const AdminPortal = {
     const db = getDb();
     const host = document.getElementById('admin-people-list');
     const kpiHost = document.getElementById('admin-kpis');
-    if (!db || !host || !kpiHost) return;
+    const historyHost = document.getElementById('admin-invite-history');
+    if (!db || !host || !kpiHost || !historyHost) return;
 
     host.innerHTML = `<div class="p-6 text-sm text-slate-400">Loading people...</div>`;
+    historyHost.innerHTML = `<div class="p-6 text-sm text-slate-400">Loading invite history...</div>`;
 
     try {
       const snap = await db.collection('accessUsers').orderBy('createdAt', 'desc').get();
-      const people = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const peopleAll = snap.docs.map((d) => {
+        const raw = d.data() || {};
+        const roleRaw = String(raw.role || '').trim().toLowerCase();
+        const statusRaw = String(raw.status || '').trim().toLowerCase();
+        const inviteRaw = String(raw.inviteStatus || '').trim().toLowerCase();
+
+        const role = ['owner', 'admin', 'staff', 'client'].includes(roleRaw)
+          ? roleRaw
+          : (raw.clientId ? 'client' : (raw.staffId ? 'staff' : 'client'));
+
+        const status = ['active', 'pending', 'suspended'].includes(statusRaw) ? statusRaw : 'pending';
+        const inviteStatus = ['invited', 'accepted', 'revoked', 'expired'].includes(inviteRaw) ? inviteRaw : 'invited';
+
+        return {
+          id: d.id,
+          ...raw,
+          role,
+          status,
+          inviteStatus
+        };
+      });
+      const people = peopleAll.filter((p) => !p.removedAt);
       const clients = people.filter(p => p.role === 'client');
       const staff = people.filter(p => p.role === 'staff');
       const invited = people.filter(p => p.inviteStatus === 'invited').length;
       const active = people.filter(p => (p.status || '').toLowerCase() === 'active').length;
+      const onlineNow = people.filter((p) => this.isOnlineNow(p)).length;
 
       kpiHost.innerHTML = `
         ${this.kpiCard('Total Invites', people.length, 'mail')}
         ${this.kpiCard('Clients', clients.length, 'users')}
         ${this.kpiCard('Staff', staff.length, 'briefcase')}
-        ${this.kpiCard('Active Logins', active, 'shield')}
+        ${this.kpiCard('Online Now', onlineNow, 'wifi')}
       `;
 
       let rows = people.filter(p => p.role === this.state.tab);
@@ -643,7 +852,13 @@ export const AdminPortal = {
       }
 
       if (!rows.length) {
-        host.innerHTML = `<div class="p-8 text-center text-sm text-slate-400">No ${this.state.tab} records yet.</div>`;
+        const otherRoleCount = this.state.tab === 'client' ? staff.length : clients.length;
+        host.innerHTML = `
+          <div class="p-8 text-center text-sm text-slate-400 space-y-1">
+            <p>No ${this.state.tab} records yet.</p>
+            <p class="text-xs">Visible access users: ${people.length}. ${otherRoleCount ? `Try the ${this.state.tab === 'client' ? 'Staff' : 'Clients'} tab.` : ''}</p>
+          </div>
+        `;
       } else {
         host.innerHTML = `
           <table class="w-full text-sm">
@@ -651,6 +866,7 @@ export const AdminPortal = {
               <tr>
                 <th class="p-3 text-left">Name</th>
                 <th class="p-3 text-left">Email</th>
+                <th class="p-3 text-left">Invited By</th>
                 <th class="p-3 text-left">Role</th>
                 <th class="p-3 text-left">Invite</th>
                 <th class="p-3 text-left">Status</th>
@@ -662,6 +878,7 @@ export const AdminPortal = {
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                   <td class="p-3 font-semibold text-slate-800 dark:text-slate-100">${row.name || '-'}</td>
                   <td class="p-3 text-slate-600 dark:text-slate-300">${row.email || '-'}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${row.invitedByName || '-'}</td>
                   <td class="p-3">
                     <select data-action="set-role" data-email="${row.emailLower || row.id}" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold ${row.role === 'owner' ? 'opacity-70 cursor-not-allowed' : ''}" ${row.role === 'owner' ? 'disabled' : ''}>
                       <option value="client" ${row.role === 'client' ? 'selected' : ''}>client</option>
@@ -678,8 +895,62 @@ export const AdminPortal = {
                       ${(row.status || '').toLowerCase() === 'suspended'
                         ? `<button data-action="activate" data-email="${row.emailLower || row.id}" class="px-2 py-1 rounded-lg border tone-success text-xs font-semibold">Activate</button>`
                         : `<button data-action="suspend" data-email="${row.emailLower || row.id}" class="px-2 py-1 rounded-lg border border-amber-200 text-amber-600 text-xs font-semibold hover:bg-amber-50">Suspend</button>`}
+                      ${row.role === 'owner'
+                        ? ''
+                        : `<button data-action="remove" data-email="${row.emailLower || row.id}" class="px-2 py-1 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50">Remove</button>`}
                     </div>
                   </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+
+      let historyRows = [...peopleAll];
+      if (this.state.search) {
+        historyRows = historyRows.filter((p) => {
+          const name = (p.name || '').toLowerCase();
+          const email = (p.email || '').toLowerCase();
+          const invitedBy = (p.invitedByName || '').toLowerCase();
+          return name.includes(this.state.search) || email.includes(this.state.search) || invitedBy.includes(this.state.search);
+        });
+      }
+
+      historyRows.sort((a, b) => {
+        const aTime = this.getMillis(a.lastInviteSentAt || a.invitedAt || a.createdAt);
+        const bTime = this.getMillis(b.lastInviteSentAt || b.invitedAt || b.createdAt);
+        return bTime - aTime;
+      });
+
+      if (!historyRows.length) {
+        historyHost.innerHTML = `<div class="p-8 text-center text-sm text-slate-400">No invite history matching this search.</div>`;
+      } else {
+        historyHost.innerHTML = `
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300">
+              <tr>
+                <th class="p-3 text-left">Email</th>
+                <th class="p-3 text-left">Role</th>
+                <th class="p-3 text-left">Invited By</th>
+                <th class="p-3 text-left">Invited At</th>
+                <th class="p-3 text-left">Last Sent</th>
+                <th class="p-3 text-left">Invite</th>
+                <th class="p-3 text-left">Status</th>
+                <th class="p-3 text-left">Removed</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              ${historyRows.map((row) => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <td class="p-3 font-medium text-slate-700 dark:text-slate-200">${row.email || row.emailLower || row.id || '-'}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${row.role || '-'}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${row.invitedByName || '-'}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${this.formatDateTime(row.invitedAt || row.createdAt)}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${this.formatDateTime(row.lastInviteSentAt)}</td>
+                  <td class="p-3">${this.badgeInvite(row.inviteStatus || 'invited')}</td>
+                  <td class="p-3">${this.badgeStatus(row.status || 'pending')}</td>
+                  <td class="p-3 text-slate-600 dark:text-slate-300">${row.removedAt ? this.formatDateTime(row.removedAt) : '-'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -691,9 +962,11 @@ export const AdminPortal = {
 
       // Keep invited KPI visible even if not used in cards now.
       void invited;
+      void active;
     } catch (err) {
       console.error(err);
       host.innerHTML = `<div class="p-6 text-sm text-red-500">Failed to load access records.</div>`;
+      historyHost.innerHTML = `<div class="p-6 text-sm text-red-500">Failed to load invite history.</div>`;
     }
   },
 
@@ -707,6 +980,38 @@ export const AdminPortal = {
         <p class="text-2xl font-bold text-slate-800 dark:text-white mt-2">${value}</p>
       </div>
     `;
+  },
+
+  getMillis(value) {
+    if (!value) return 0;
+    if (typeof value?.toDate === 'function') {
+      const d = value.toDate();
+      return Number.isFinite(d?.getTime?.()) ? d.getTime() : 0;
+    }
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value.getTime() : 0;
+    }
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed.getTime() : 0;
+  },
+
+  formatDateTime(value) {
+    const ms = this.getMillis(value);
+    if (!ms) return '-';
+    return new Date(ms).toLocaleString();
+  },
+
+  isOnlineNow(row = {}) {
+    const accountActive = String(row.status || '').toLowerCase() === 'active';
+    if (!accountActive) return false;
+
+    const presenceState = String(row.presenceState || '').toLowerCase();
+    if (presenceState !== 'online' && presenceState !== 'away') return false;
+
+    const lastSeenMs = this.getMillis(row.presenceLastSeenAt);
+    if (!lastSeenMs) return false;
+
+    return (Date.now() - lastSeenMs) <= (window.FLOWR_PRESENCE_STALE_MS || 120000);
   },
 
   badgeInvite(status) {

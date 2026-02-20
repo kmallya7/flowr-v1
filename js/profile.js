@@ -4,6 +4,7 @@ const profileManager = {
     modal: null,
     backdrop: null,
     isOpen: false,
+    signOutInFlight: false,
 
     init() {
         // Create the modal HTML dynamically if it doesn't exist to keep index.html clean
@@ -24,11 +25,19 @@ const profileManager = {
         // Close listeners
         document.getElementById('closeProfileBtn')?.addEventListener('click', () => this.close());
         this.backdrop?.addEventListener('click', () => this.close());
+        document.getElementById('profileSignOutBtn')?.addEventListener('click', () => this.signOutWithFade());
         
         // Close on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) this.close();
         });
+
+        // If auth state is lost while modal is open, close it gracefully.
+        if (window.auth?.onAuthStateChanged) {
+            window.auth.onAuthStateChanged((user) => {
+                if (!user && this.isOpen) this.close();
+            });
+        }
     },
 
     injectModalHTML() {
@@ -72,7 +81,7 @@ const profileManager = {
                             </div>
                         </div>
 
-                        <button onclick="window.auth.signOut()" class="w-full p-4 rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 flex items-center gap-4 group hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left">
+                        <button id="profileSignOutBtn" class="w-full p-4 rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 flex items-center gap-4 group hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-left">
                             <div class="w-10 h-10 rounded-full bg-white dark:bg-red-900/20 flex items-center justify-center text-red-500 shadow-sm">
                                 <i data-feather="log-out" class="w-5 h-5"></i>
                             </div>
@@ -138,6 +147,7 @@ const profileManager = {
 
     close() {
         const content = document.getElementById('profileContent');
+        if (!content || !this.modal || !this.backdrop) return;
         content.classList.remove('scale-100', 'opacity-100');
         content.classList.add('scale-95', 'opacity-0');
         
@@ -149,6 +159,22 @@ const profileManager = {
         }, 300);
 
         this.isOpen = false;
+    },
+
+    async signOutWithFade() {
+        if (this.signOutInFlight) return;
+        this.signOutInFlight = true;
+
+        if (this.isOpen) {
+            this.close();
+            await new Promise(resolve => setTimeout(resolve, 220));
+        }
+
+        try {
+            await window.auth?.signOut?.();
+        } finally {
+            this.signOutInFlight = false;
+        }
     }
 };
 

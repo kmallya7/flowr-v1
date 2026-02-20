@@ -491,13 +491,13 @@ window.loadDashboard = async function () {
           <button id="toggle-edit-mode" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
             <i data-feather="move" class="w-3 h-3"></i> <span>Customize Layout</span>
           </button>
-          <button id="add-custom-kpi" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition">
+          <button id="add-custom-kpi" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
             <i data-feather="plus-circle" class="w-3 h-3"></i> <span>Add KPI</span>
           </button>
-          <button id="add-custom-chart" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition">
+          <button id="add-custom-chart" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
             <i data-feather="pie-chart" class="w-3 h-3"></i> <span>Add Chart</span>
           </button>
-          <button id="add-custom-table" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400 transition">
+          <button id="add-custom-table" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition">
             <i data-feather="grid" class="w-3 h-3"></i> <span>Add Table</span>
           </button>
         </div>

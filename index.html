@@ -266,6 +266,57 @@
       border-color: var(--border-soft) !important;
     }
 
+    .appearance-swatch {
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 9999px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .appearance-option[data-selected="true"] {
+      border-color: color-mix(in srgb, var(--primary) 62%, #fff) !important;
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 45%, #fff);
+    }
+
+    .appearance-range {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 0.5rem;
+      border-radius: 9999px;
+      outline: none;
+      border: 1px solid color-mix(in srgb, var(--border-soft) 82%, transparent);
+      background: linear-gradient(
+        90deg,
+        var(--primary) 0%,
+        var(--primary) var(--appearance-range-fill, 50%),
+        color-mix(in srgb, var(--surface-2) 80%, #94a3b8) var(--appearance-range-fill, 50%),
+        color-mix(in srgb, var(--surface-2) 80%, #94a3b8) 100%
+      );
+      transition: background var(--motion-fast) var(--ease-standard);
+    }
+
+    .appearance-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 9999px;
+      background: var(--primary);
+      border: 2px solid color-mix(in srgb, var(--surface-1) 88%, #fff);
+      box-shadow: 0 2px 10px -4px rgba(15, 23, 42, 0.55);
+      cursor: pointer;
+    }
+
+    .appearance-range::-moz-range-thumb {
+      width: 1rem;
+      height: 1rem;
+      border-radius: 9999px;
+      background: var(--primary);
+      border: 2px solid color-mix(in srgb, var(--surface-1) 88%, #fff);
+      box-shadow: 0 2px 10px -4px rgba(15, 23, 42, 0.55);
+      cursor: pointer;
+    }
+
     .action-link {
       color: var(--primary-strong) !important;
       font-weight: 700;
@@ -281,6 +332,29 @@
     }
     .dark .action-link:hover {
       color: color-mix(in srgb, var(--primary) 24%, white) !important;
+    }
+
+    .home-feature-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--surface-1) 88%, transparent) !important;
+      color: color-mix(in srgb, var(--primary) 72%, #0f172a) !important;
+      border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border-soft));
+      box-shadow: 0 6px 14px -10px rgba(15, 23, 42, 0.35);
+    }
+    .home-feature-icon svg,
+    .home-feature-icon i {
+      color: inherit !important;
+      stroke: currentColor !important;
+    }
+    .dark .home-feature-icon {
+      background: color-mix(in srgb, var(--surface-2) 70%, transparent) !important;
+      color: color-mix(in srgb, var(--primary) 32%, white) !important;
+      border-color: color-mix(in srgb, var(--primary) 50%, #8ea0a9);
     }
 
     /* --- Sidebar Animation Logic --- */
@@ -934,6 +1008,7 @@
               <span class="font-semibold">Sign in with Google</span>
               <div class="absolute inset-0 rounded-xl ring-2 ring-blue-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </button>
+            <p id="signInStatus" class="hidden text-xs font-medium px-3 py-2 rounded-lg border"></p>
             
             <div class="relative">
               <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200 dark:border-slate-800"></div></div>
@@ -1026,6 +1101,10 @@
   </svg>
   <span class="sidebar-label text-sm">Fixed Expenses</span>
 </a>
+      <a href="#admin" class="nav-link group" data-tooltip="Admin">
+        <i data-feather="shield" class="nav-icon"></i>
+        <span class="sidebar-label text-sm">Admin</span>
+      </a>
       <a href="#export" class="nav-link group" data-tooltip="Export">
         <i data-feather="upload-cloud" class="nav-icon"></i>
         <span class="sidebar-label text-sm">Export</span>
@@ -1126,26 +1205,34 @@
       </div>
     </div>
 
-    <div onclick="showSection('dashboard')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item" data-reveal style="--reveal-delay:140ms;">
+    <div onclick="showSection('dashboard')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item relative overflow-hidden" data-reveal style="--reveal-delay:140ms;">
+      <div class="absolute -right-10 top-1/2 -translate-y-1/2 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-full blur-2xl group-hover:bg-purple-100 dark:group-hover:bg-purple-900/20 transition-colors"></div>
       <div class="flex items-center justify-between mb-4">
-        <div class="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400">
-          <i data-feather="pie-chart"></i>
+        <div class="home-feature-icon">
+          <i data-feather="pie-chart" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-bold text-slate-300 group-hover:text-purple-500 transition-colors">STATS</span>
+        <span class="text-xs font-bold text-slate-500 dark:text-slate-300 group-hover:text-slate-700 dark:group-hover:text-white transition-colors">STATS</span>
       </div>
       <h3 class="text-lg font-bold text-slate-800 dark:text-white">Analytics</h3>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Performance & Trends.</p>
+      <div class="absolute right-6 bottom-6 z-10 w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+        <i data-feather="chevron-right" class="w-4 h-4"></i>
+      </div>
     </div>
 
-    <div onclick="showSection('invoice')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item" data-reveal style="--reveal-delay:190ms;">
+    <div onclick="showSection('invoice')" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all cursor-pointer group hover:-translate-y-1 premium-card kpi-card reveal-item relative overflow-hidden" data-reveal style="--reveal-delay:190ms;">
+      <div class="absolute -right-10 top-1/2 -translate-y-1/2 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/10 rounded-full blur-2xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/20 transition-colors"></div>
        <div class="flex items-center justify-between mb-4">
-        <div class="w-10 h-10 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-          <i data-feather="file-text"></i>
+        <div class="home-feature-icon">
+          <i data-feather="file-text" class="w-5 h-5"></i>
         </div>
-        <span class="text-xs font-bold text-slate-300 group-hover:text-emerald-500 transition-colors">BILLING</span>
+        <span class="text-xs font-bold text-slate-500 dark:text-slate-300 group-hover:text-slate-700 dark:group-hover:text-white transition-colors">BILLING</span>
       </div>
       <h3 class="text-lg font-bold text-slate-800 dark:text-white">Invoice</h3>
       <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Generate Client Bills.</p>
+      <div class="absolute right-6 bottom-6 z-10 w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+        <i data-feather="chevron-right" class="w-4 h-4"></i>
+      </div>
     </div>
 
     <div onclick="showSection('recipeCalculator')" class="col-span-1 md:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer group hover:-translate-y-1 flex items-center justify-between relative overflow-hidden premium-card reveal-item" data-reveal style="--reveal-delay:230ms;">
@@ -1153,7 +1240,7 @@
       
       <div class="relative z-10">
         <div class="flex items-center gap-3 mb-2">
-          <div class="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+          <div class="home-feature-icon w-10 h-10 rounded-xl">
              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path>
               </svg>
@@ -1182,14 +1269,14 @@
 </button>
 
       <button onclick="showSection('clients')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
-        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-emerald-500 transition-colors shadow-sm">
+        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-blue-500 transition-colors shadow-sm">
           <i data-feather="user-plus" class="w-4 h-4"></i>
         </div>
         <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">New Client</span>
       </button>
 
       <button onclick="showSection('payments')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
-        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-green-500 transition-colors shadow-sm">
+        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-blue-500 transition-colors shadow-sm">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 3h12"></path>
             <path d="M6 8h12"></path>
@@ -1202,7 +1289,7 @@
       </button>
 
       <button onclick="showSection('orders')" class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 transition-all text-left group premium-card">
-        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-orange-500 transition-colors shadow-sm">
+        <div class="w-8 h-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-500 group-hover:text-blue-500 transition-colors shadow-sm">
           <i data-feather="shopping-bag" class="w-4 h-4"></i>
         </div>
         <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">View Orders</span>
@@ -1787,10 +1874,205 @@
       feather.replace();
     });
 
-    // --- 2. DARK MODE LOGIC ---
+    // --- 2. APPEARANCE + DARK MODE LOGIC ---
+    const APPEARANCE_KEY = 'flowrAppearanceV1';
     const THEME_KEY = 'themePreference';
     const savedTheme = localStorage.getItem(THEME_KEY);
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const rootStyle = document.documentElement.style;
+
+    const FLOWR_THEME_PRESETS = [
+      {
+        id: 'obsidian-gold',
+        name: 'Obsidian Gold',
+        swatches: ['#111111', '#2F2F2F', '#F6F6F6', '#FFCB74'],
+        defaultAccent: '#FFCB74',
+        success: '#2F2F2F',
+        info: '#2F2F2F',
+        light: { appBg: '#F6F6F6', surface1: '#FFFFFF', surface2: '#ECECEC', text: '#111111', muted: '#2F2F2F', border: 'rgba(47, 47, 47, 0.24)' },
+        dark: { appBg: '#111111', surface1: '#1D1D1D', surface2: '#2F2F2F', text: '#F6F6F6', muted: '#D5D5D5', border: 'rgba(246, 246, 246, 0.2)' }
+      },
+      {
+        id: 'midnight-teal',
+        name: 'Midnight Teal',
+        swatches: ['#0F1A29', '#36454F', '#1B4F55', '#C2C9CC'],
+        defaultAccent: '#1B4F55',
+        success: '#1B4F55',
+        info: '#36454F',
+        light: { appBg: '#F7F9FA', surface1: '#FFFFFF', surface2: '#E6EBEE', text: '#111827', muted: '#36454F', border: 'rgba(54, 69, 79, 0.24)' },
+        dark: { appBg: '#0F1A29', surface1: '#1A2B3D', surface2: '#36454F', text: '#E8EEF2', muted: '#C2C9CC', border: 'rgba(194, 201, 204, 0.34)' }
+      },
+      {
+        id: 'twilight-lilac',
+        name: 'Twilight Lilac',
+        swatches: ['#2A2438', '#352F44', '#5C5470', '#DBD8E3'],
+        defaultAccent: '#5C5470',
+        success: '#5C5470',
+        info: '#352F44',
+        light: { appBg: '#F4F2F8', surface1: '#FFFFFF', surface2: '#E7E2EF', text: '#2A2438', muted: '#352F44', border: 'rgba(53, 47, 68, 0.24)' },
+        dark: { appBg: '#2A2438', surface1: '#332C45', surface2: '#5C5470', text: '#E5E1EC', muted: '#DBD8E3', border: 'rgba(219, 216, 227, 0.3)' }
+      },
+      {
+        id: 'stone-sand',
+        name: 'Stone Sand',
+        swatches: ['#282726', '#54504C', '#86817C', '#D6CAB0'],
+        defaultAccent: '#54504C',
+        success: '#54504C',
+        info: '#86817C',
+        light: { appBg: '#F5F3EF', surface1: '#FFFFFF', surface2: '#E5DFD5', text: '#282726', muted: '#54504C', border: 'rgba(84, 80, 76, 0.24)' },
+        dark: { appBg: '#282726', surface1: '#343230', surface2: '#54504C', text: '#E6DED0', muted: '#D6CAB0', border: 'rgba(214, 202, 176, 0.28)' }
+      },
+      {
+        id: 'artisan-forest',
+        name: 'Artisan Forest',
+        swatches: ['#B38B59', '#113E26', '#F0F0F0', '#EFEFEF'],
+        defaultAccent: '#B38B59',
+        success: '#113E26',
+        info: '#113E26',
+        light: { appBg: '#F0F0F0', surface1: '#FFFFFF', surface2: '#EFEFEF', text: '#113E26', muted: '#3A4A40', border: 'rgba(17, 62, 38, 0.2)' },
+        dark: { appBg: '#0F2419', surface1: '#113E26', surface2: '#1C4C32', text: '#F0F0F0', muted: '#DCC39E', border: 'rgba(220, 195, 158, 0.26)' }
+      }
+    ];
+
+    const FLOWR_ACCENT_PRESETS = [
+      { id: 'amber', name: 'Amber', hex: '#FFCB74' },
+      { id: 'teal', name: 'Teal', hex: '#1B4F55' },
+      { id: 'violet', name: 'Violet', hex: '#5C5470' },
+      { id: 'forest', name: 'Forest', hex: '#113E26' },
+      { id: 'stone', name: 'Stone', hex: '#54504C' },
+      { id: 'gold', name: 'Gold', hex: '#B38B59' }
+    ];
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+    const normalizeHex = (hex, fallback = '#1B4F55') => {
+      const clean = String(hex || '').trim();
+      if (/^#[0-9A-Fa-f]{6}$/.test(clean)) return clean.toUpperCase();
+      return fallback;
+    };
+    const hexToRgb = (hex) => {
+      const clean = normalizeHex(hex, '#1B4F55').replace('#', '');
+      const num = parseInt(clean, 16);
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    };
+    const rgba = (hex, alpha) => {
+      const { r, g, b } = hexToRgb(hex);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    const mixHex = (a, b, weight = 0.5) => {
+      const x = hexToRgb(a);
+      const y = hexToRgb(b);
+      const w = clamp(weight, 0, 1);
+      const c = {
+        r: Math.round(x.r * (1 - w) + y.r * w),
+        g: Math.round(x.g * (1 - w) + y.g * w),
+        b: Math.round(x.b * (1 - w) + y.b * w)
+      };
+      const toHex = (n) => n.toString(16).padStart(2, '0');
+      return `#${toHex(c.r)}${toHex(c.g)}${toHex(c.b)}`.toUpperCase();
+    };
+    const rgbCsv = (hex) => {
+      const { r, g, b } = hexToRgb(hex);
+      return `${r}, ${g}, ${b}`;
+    };
+
+    function getThemePreset(themeId) {
+      return FLOWR_THEME_PRESETS.find((t) => t.id === themeId) || FLOWR_THEME_PRESETS[1];
+    }
+
+    function loadAppearanceState() {
+      const fallbackTheme = FLOWR_THEME_PRESETS[1];
+      const fallback = { themeId: fallbackTheme.id, accent: fallbackTheme.defaultAccent, intensity: 56 };
+      try {
+        const raw = JSON.parse(localStorage.getItem(APPEARANCE_KEY) || '{}');
+        const theme = getThemePreset(raw.themeId);
+        return {
+          themeId: theme.id,
+          accent: normalizeHex(raw.accent, theme.defaultAccent),
+          intensity: clamp(Number(raw.intensity), 10, 100) || fallback.intensity
+        };
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    let flowrAppearanceState = loadAppearanceState();
+
+    function persistAppearanceState() {
+      localStorage.setItem(APPEARANCE_KEY, JSON.stringify(flowrAppearanceState));
+    }
+
+    function applyAppearanceTokens() {
+      const isDark = document.documentElement.classList.contains('dark');
+      const theme = getThemePreset(flowrAppearanceState.themeId);
+      const base = isDark ? theme.dark : theme.light;
+      const accent = normalizeHex(flowrAppearanceState.accent, theme.defaultAccent);
+      const intensity = clamp(Number(flowrAppearanceState.intensity) / 100, 0.1, 1);
+
+      const primaryStrong = mixHex(accent, '#000000', isDark ? 0.18 + intensity * 0.2 : 0.22 + intensity * 0.28);
+      const primarySoft = rgba(accent, (0.08 + intensity * 0.22).toFixed(3));
+      const success = normalizeHex(theme.success, accent);
+      const info = normalizeHex(theme.info, base.muted || base.text);
+
+      rootStyle.setProperty('--primary', accent);
+      rootStyle.setProperty('--primary-rgb', rgbCsv(accent));
+      rootStyle.setProperty('--primary-strong', primaryStrong);
+      rootStyle.setProperty('--primary-soft', primarySoft);
+      rootStyle.setProperty('--app-bg', base.appBg);
+      rootStyle.setProperty('--app-text', base.text);
+      rootStyle.setProperty('--surface-1', base.surface1);
+      rootStyle.setProperty('--surface-2', base.surface2);
+      rootStyle.setProperty('--border-soft', base.border);
+      rootStyle.setProperty('--success', success);
+      rootStyle.setProperty('--success-rgb', rgbCsv(success));
+      rootStyle.setProperty('--success-soft', rgba(success, (0.08 + intensity * 0.2).toFixed(3)));
+      rootStyle.setProperty('--info', info);
+      rootStyle.setProperty('--info-rgb', rgbCsv(info));
+      rootStyle.setProperty('--info-soft', rgba(info, (0.08 + intensity * 0.18).toFixed(3)));
+      rootStyle.setProperty('--nav-text', base.muted);
+      rootStyle.setProperty('--nav-hover-bg', isDark ? mixHex(accent, base.surface2, 0.22 + intensity * 0.18) : base.surface2);
+      rootStyle.setProperty('--nav-hover-text', isDark ? base.text : mixHex(base.text, '#000000', 0.1));
+      rootStyle.setProperty('--header-bg', rgba(base.surface1, isDark ? 0.84 : 0.86));
+      rootStyle.setProperty('--card-shadow', isDark ? '0 12px 28px -18px rgba(0, 0, 0, 0.75)' : '0 10px 24px -18px rgba(15, 26, 41, 0.26)');
+      rootStyle.setProperty('--tippy-bg', isDark ? '#F8FAFC' : '#0F172A');
+      rootStyle.setProperty('--tippy-fg', isDark ? '#0F172A' : '#F8FAFC');
+      rootStyle.setProperty('--tippy-border', isDark ? 'rgba(148, 163, 184, 0.55)' : 'rgba(148, 163, 184, 0.3)');
+      rootStyle.setProperty('--tippy-shadow', isDark ? '0 14px 30px -20px rgba(148, 163, 184, 0.65)' : '0 12px 24px -16px rgba(2, 6, 23, 0.9)');
+    }
+
+    function setAppearanceState(patch = {}) {
+      const nextTheme = getThemePreset(patch.themeId || flowrAppearanceState.themeId);
+      const nextAccent = normalizeHex(patch.accent || flowrAppearanceState.accent, nextTheme.defaultAccent);
+      const nextIntensity = clamp(Number(patch.intensity ?? flowrAppearanceState.intensity), 10, 100);
+      flowrAppearanceState = { themeId: nextTheme.id, accent: nextAccent, intensity: nextIntensity };
+      persistAppearanceState();
+      applyAppearanceTokens();
+      window.dispatchEvent(new CustomEvent('flowr:appearance-change', { detail: { ...flowrAppearanceState } }));
+    }
+
+    window.FlowrTheme = {
+      getState() {
+        return { ...flowrAppearanceState };
+      },
+      getPresets() {
+        return {
+          themes: FLOWR_THEME_PRESETS.map((t) => ({ id: t.id, name: t.name, swatches: [...t.swatches], defaultAccent: t.defaultAccent })),
+          accents: FLOWR_ACCENT_PRESETS.map((a) => ({ ...a }))
+        };
+      },
+      setTheme(themeId) {
+        const theme = getThemePreset(themeId);
+        setAppearanceState({ themeId: theme.id });
+      },
+      setAccent(accent) {
+        setAppearanceState({ accent });
+      },
+      setIntensity(intensity) {
+        setAppearanceState({ intensity });
+      },
+      syncWithMode() {
+        applyAppearanceTokens();
+      }
+    };
 
     function applyTheme(isDark) {
       if (isDark) {
@@ -1800,6 +2082,7 @@
         document.documentElement.classList.remove('dark');
         themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'; 
       }
+      window.FlowrTheme?.syncWithMode?.();
       feather.replace();
     }
 
@@ -2426,9 +2709,65 @@ window.addEventListener('pageshow', () => scheduleTooltipInit(0));
       }
     }
 
+    function setSignInStatus(message = '', tone = 'info') {
+      const el = document.getElementById('signInStatus');
+      if (!el) return;
+
+      if (!message) {
+        el.className = 'hidden text-xs font-medium px-3 py-2 rounded-lg border';
+        el.textContent = '';
+        return;
+      }
+
+      const toneClass = tone === 'error'
+        ? 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-950/30 dark:border-red-900/60'
+        : tone === 'success'
+        ? 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900/60'
+        : 'text-blue-700 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-950/30 dark:border-blue-900/60';
+
+      el.className = `block text-xs font-medium px-3 py-2 rounded-lg border ${toneClass}`;
+      el.textContent = message;
+    }
+
+    async function handleInviteActivationLink() {
+      if (!window.auth || !window.completeInviteEmailLinkSignIn) return;
+      if (!window.auth.isSignInWithEmailLink(window.location.href)) return;
+
+      setSignInStatus('Verifying invite link...', 'info');
+
+      try {
+        const completion = await window.completeInviteEmailLinkSignIn();
+        if (!completion?.completed) return;
+
+        setSignInStatus('Invite verified. Linking Google account...', 'info');
+        try {
+          const linkedResult = await window.linkGoogleProviderToCurrentUser?.();
+          if (linkedResult?.linked) {
+            setSignInStatus('Activation complete. Google account linked.', 'success');
+          } else {
+            setSignInStatus('Invite verified. Continue with Google sign-in.', 'info');
+          }
+        } catch (linkErr) {
+          if (linkErr?.code === 'auth/popup-blocked') {
+            setSignInStatus('Invite verified. Click "Sign in with Google" to finish.', 'info');
+            return;
+          }
+          if (linkErr?.code === 'auth/provider-already-linked') {
+            setSignInStatus('Invite verified. Google account already linked.', 'success');
+            return;
+          }
+          console.error('Google linking failed after invite activation:', linkErr);
+          setSignInStatus('Invite verified. Continue with Google sign-in.', 'info');
+        }
+      } catch (err) {
+        console.error('Invite link verification failed:', err);
+        setSignInStatus('Activation link failed. Request a new invite.', 'error');
+      }
+    }
+
     updateGreeting();
 
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
         const loader = document.getElementById('globalLoader');
         const removeLoader = () => {
             loader.classList.add('loader-hidden');
@@ -2436,8 +2775,11 @@ window.addEventListener('pageshow', () => scheduleTooltipInit(0));
         };
 
         if(window.auth) {
+            await handleInviteActivationLink();
+
             window.auth.onAuthStateChanged(async (user) => {
                 if(user) {
+                    await window.FlowrPresence?.start?.(user);
                     const accessResult = await window.AccessControl?.handlePostLogin(user);
                     if (accessResult && accessResult.allowed === false) {
                         alert("Access denied: your account is not invited or is currently inactive. Please contact admin.");
@@ -2462,6 +2804,7 @@ window.addEventListener('pageshow', () => scheduleTooltipInit(0));
                     scheduleTooltipInit(0);
                     setTimeout(removeLoader, 500); // Slight delay for smoothness
                 } else {
+                    await window.FlowrPresence?.stop?.();
                     window.AccessControl?.clearSession?.();
                     window.RolePortal?.resetToDefaultSidebar?.();
                     window.RolePortal?.clearHeaderAffordances?.();
@@ -2472,6 +2815,9 @@ window.addEventListener('pageshow', () => scheduleTooltipInit(0));
                     updateGreeting();
                     applyRoleGuards();
                     scheduleTooltipInit(0);
+                    if (!window.auth.isSignInWithEmailLink(window.location.href)) {
+                      setSignInStatus('', 'info');
+                    }
                     removeLoader(); // Immediate removal to show login
                 }
             });
@@ -2483,8 +2829,24 @@ window.addEventListener('pageshow', () => scheduleTooltipInit(0));
         showSection(initialSection);
     });
 
-    document.getElementById('signInGoogleBtn')?.addEventListener('click', () => window.auth?.signInWithPopup(window.googleProvider));
-    document.getElementById('loginBtn')?.addEventListener('click', () => window.auth?.signInWithPopup(window.googleProvider));
+    document.getElementById('signInGoogleBtn')?.addEventListener('click', async () => {
+      try {
+        setSignInStatus('', 'info');
+        await window.continueWithGoogleAuth?.();
+      } catch (err) {
+        console.error('Google sign-in failed:', err);
+        setSignInStatus('Google sign-in failed. Please try again.', 'error');
+      }
+    });
+    document.getElementById('loginBtn')?.addEventListener('click', async () => {
+      try {
+        setSignInStatus('', 'info');
+        await window.continueWithGoogleAuth?.();
+      } catch (err) {
+        console.error('Google sign-in failed:', err);
+        setSignInStatus('Google sign-in failed. Please try again.', 'error');
+      }
+    });
     document.getElementById('logoutBtn')?.addEventListener('click', () => window.auth?.signOut());
 
     // --- Mouse Spotlight Logic for Login Page ---
